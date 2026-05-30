@@ -1,0 +1,47 @@
+<Window x:Class="Win11IsoBuilder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Windows 11 Custom ISO Builder" Height="680" Width="980"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Step rail -->
+        <Border Grid.Column="0" Background="#1F2937">
+            <StackPanel Margin="16">
+                <TextBlock Text="ISO Builder" Foreground="White" FontSize="18" FontWeight="Bold"
+                           Margin="0,8,0,24" />
+                <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Title}" Foreground="#D1D5DB"
+                                       Margin="0,6" FontSize="14" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- Active step + nav -->
+        <Grid Grid.Column="1" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="{Binding CurrentStep.Title}" FontSize="20"
+                       FontWeight="SemiBold" Margin="0,0,0,12" />
+
+            <ContentControl Grid.Row="1" Content="{Binding CurrentStep}" />
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                <Button Content="Back" Command="{Binding BackCommand}" Width="100" Height="32" Margin="0,0,8,0" />
+                <Button Content="Next" Command="{Binding NextCommand}" Width="100" Height="32" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

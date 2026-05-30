@@ -1,0 +1,24 @@
+<UserControl x:Class="Win11IsoBuilder.Views.SelectIsoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Source Windows 11 ISO" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" Text="{Binding IsoPath, Mode=OneWay}" IsReadOnly="True"
+                     VerticalContentAlignment="Center" Height="32" />
+            <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}"
+                    Width="100" Height="32" Margin="8,0,0,0" />
+        </Grid>
+
+        <TextBlock Text="{Binding StatusMessage}" Foreground="#6B7280" Margin="0,8,0,16" TextWrapping="Wrap" />
+        <ProgressBar IsIndeterminate="True" Height="4" Margin="0,0,0,12"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+
+        <TextBlock Text="Windows edition" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <ComboBox ItemsSource="{Binding Editions}" SelectedItem="{Binding SelectedEdition}" Height="32" />
+    </StackPanel>
+</UserControl>

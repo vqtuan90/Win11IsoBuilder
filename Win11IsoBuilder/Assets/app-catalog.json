@@ -1,0 +1,65 @@
+[
+  {
+    "id": "chrome",
+    "name": "Google Chrome (Enterprise)",
+    "category": "Browser",
+    "sourceUrl": "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi",
+    "fileName": "googlechrome-enterprise.msi",
+    "silentArgs": "/qn /norestart",
+    "note": "Always-latest URL (Google publishes no immutable versioned URL), so it cannot be SHA-256 pinned; integrity rests on TLS. Supply a fixed installer via 'Add app' if a pinned hash is required."
+  },
+  {
+    "id": "firefox",
+    "name": "Mozilla Firefox 128.0",
+    "category": "Browser",
+    "sourceUrl": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/128.0/win64/en-US/Firefox%20Setup%20128.0.msi",
+    "fileName": "firefox-128.0.msi",
+    "silentArgs": "/qn /norestart",
+    "sha256": "BFE7D2DEAD5A6ED1C9EFB928A474A8C778180EEAF8DFD994F73C01CFCFD02B05"
+  },
+  {
+    "id": "7zip",
+    "name": "7-Zip 24.09",
+    "category": "Utility",
+    "sourceUrl": "https://www.7-zip.org/a/7z2409-x64.exe",
+    "fileName": "7zip-24.09-x64.exe",
+    "silentArgs": "/S",
+    "sha256": "BDD1A33DE78618D16EE4CE148B849932C05D0015491C34887846D431D29F308E"
+  },
+  {
+    "id": "vlc",
+    "name": "VLC media player 3.0.21",
+    "category": "Media",
+    "sourceUrl": "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.exe",
+    "fileName": "vlc-3.0.21-win64.exe",
+    "silentArgs": "/S",
+    "sha256": "9742689A50E96DDC04D80CEFF046B28DA2BEEFD617BE18166F8C5E715EC60C59"
+  },
+  {
+    "id": "notepadpp",
+    "name": "Notepad++ 8.6.9",
+    "category": "Editor",
+    "sourceUrl": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6.9/npp.8.6.9.Installer.x64.exe",
+    "fileName": "npp-8.6.9-x64.exe",
+    "silentArgs": "/S",
+    "sha256": "3FD473E00FA464F18AF2DD930CF5BDBA0709FDD841631598ACCCDB04C32A5CD2"
+  },
+  {
+    "id": "zalo",
+    "name": "Zalo PC",
+    "category": "Messaging",
+    "sourceUrl": "",
+    "fileName": "ZaloSetup.exe",
+    "silentArgs": "/S",
+    "note": "No stable silent-installer URL. Use 'Add app' to point to a downloaded ZaloSetup.exe."
+  },
+  {
+    "id": "unikey",
+    "name": "UniKey (Vietnamese input)",
+    "category": "Utility",
+    "sourceUrl": "",
+    "fileName": "UniKeySetup.exe",
+    "silentArgs": "/S",
+    "note": "UniKey ships as a portable .zip. Use 'Add app' to supply an installer/self-extractor if needed."
+  }
+]

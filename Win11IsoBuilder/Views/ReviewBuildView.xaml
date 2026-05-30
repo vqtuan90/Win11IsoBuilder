@@ -1,0 +1,57 @@
+<UserControl x:Class="Win11IsoBuilder.Views.ReviewBuildView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ADK warning -->
+        <Border Grid.Row="0" Background="#FEF3C7" Padding="10" Margin="0,0,0,10"
+                Visibility="{Binding AdkMissing, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding AdkWarning}" TextWrapping="Wrap" Foreground="#92400E" />
+        </Border>
+
+        <!-- Output -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Output:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1" Height="30" Text="{Binding OutputName, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Grid.Column="2" Height="30" Margin="8,0,0,0" IsReadOnly="True"
+                     Text="{Binding OutputDirectory, Mode=OneWay}" />
+            <Button Grid.Column="3" Content="Folder..." Command="{Binding BrowseOutputCommand}"
+                    Width="90" Height="30" Margin="8,0,0,0" />
+        </Grid>
+
+        <!-- Build controls -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="Build ISO" Command="{Binding BuildCommand}" Width="120" Height="34"
+                    FontWeight="SemiBold" Margin="0,0,8,0" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" Height="34"
+                    IsEnabled="{Binding IsBuilding}" />
+        </StackPanel>
+
+        <!-- Progress -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,8">
+            <ProgressBar Height="18" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
+            <TextBlock Text="{Binding StatusMessage}" Margin="0,4,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- Live log -->
+        <Border Grid.Row="4" BorderBrush="#D1D5DB" BorderThickness="1">
+            <TextBox Text="{Binding LogText, Mode=OneWay}" IsReadOnly="True"
+                     FontFamily="Consolas" FontSize="11" Background="#111827" Foreground="#9CA3AF"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     TextWrapping="NoWrap" />
+        </Border>
+    </Grid>
+</UserControl>

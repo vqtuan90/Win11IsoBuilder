@@ -1,0 +1,27 @@
+<Application x:Class="Win11IsoBuilder.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Win11IsoBuilder.ViewModels"
+             xmlns:views="clr-namespace:Win11IsoBuilder.Views"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <!-- Map each wizard step VM to its View so the shell ContentControl renders the right page. -->
+        <DataTemplate DataType="{x:Type vm:SelectIsoViewModel}">
+            <views:SelectIsoView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:WindowsCustomizeViewModel}">
+            <views:WindowsCustomizeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:OfficeViewModel}">
+            <views:OfficeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AppsViewModel}">
+            <views:AppsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ReviewBuildViewModel}">
+            <views:ReviewBuildView />
+        </DataTemplate>
+    </Application.Resources>
+</Application>

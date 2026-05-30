@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Win11IsoBuilder", "Win11IsoBuilder\Win11IsoBuilder.csproj", "{D290548C-CC2F-4239-BAA9-611D221DC264}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Win11IsoBuilder.Tests", "Win11IsoBuilder.Tests\Win11IsoBuilder.Tests.csproj", "{B2CB34A9-EBB8-4416-8EAE-94CD0810834F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D290548C-CC2F-4239-BAA9-611D221DC264}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D290548C-CC2F-4239-BAA9-611D221DC264}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D290548C-CC2F-4239-BAA9-611D221DC264}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D290548C-CC2F-4239-BAA9-611D221DC264}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2CB34A9-EBB8-4416-8EAE-94CD0810834F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2CB34A9-EBB8-4416-8EAE-94CD0810834F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2CB34A9-EBB8-4416-8EAE-94CD0810834F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2CB34A9-EBB8-4416-8EAE-94CD0810834F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

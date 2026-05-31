@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: windows-latest # WPF net8.0-windows requires a Windows runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Win11IsoBuilder.sln
+
+      - name: Build (Release)
+        run: dotnet build Win11IsoBuilder.sln -c Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test Win11IsoBuilder.Tests/Win11IsoBuilder.Tests.csproj -c Release --no-build --verbosity normal

@@ -142,8 +142,9 @@ public sealed class IsoService
 
     private async Task RobocopyAsync(string source, string dest, CancellationToken ct)
     {
-        // /E recurse incl. empty, mirror-style copy of a read-only mount.
-        var args = $"\"{source.TrimEnd('\\')}\" \"{dest}\" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP";
+        // /E recurse incl. empty. /A-:R strips the read-only attribute the files inherit from the
+        // read-only ISO mount — DISM cannot mount install.wim for modify if it stays read-only (0xc1510111).
+        var args = $"\"{source.TrimEnd('\\')}\" \"{dest}\" /E /A-:R /R:1 /W:1 /NFL /NDL /NJH /NJS /NP";
         var r = await _runner.RunAsync("robocopy.exe", args, timeout: CopyTimeout, cancellationToken: ct)
             .ConfigureAwait(false);
         // robocopy success is exit code < 8 (8+ means at least one file failed).

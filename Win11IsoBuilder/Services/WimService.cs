@@ -60,6 +60,7 @@ public sealed class WimService
     public async Task MountWimAsync(string wimPath, int index, string mountDir, CancellationToken ct = default)
     {
         Directory.CreateDirectory(mountDir);
+        ClearReadOnly(wimPath); // a read-only WIM cannot be mounted for modify (DISM 0xc1510111)
         _log.Info($"Mounting image index {index} → {mountDir}");
         var r = await Dism(
             $"/Mount-Wim /WimFile:\"{wimPath}\" /Index:{index} /MountDir:\"{mountDir}\"", ct)
@@ -128,5 +129,17 @@ public sealed class WimService
     {
         try { if (File.Exists(path)) File.Delete(path); }
         catch (Exception ex) { _log.Warn($"Could not delete {path}: {ex.Message}"); }
+    }
+
+    private void ClearReadOnly(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+            var attrs = File.GetAttributes(path);
+            if (attrs.HasFlag(FileAttributes.ReadOnly))
+                File.SetAttributes(path, attrs & ~FileAttributes.ReadOnly);
+        }
+        catch (Exception ex) { _log.Warn($"Could not clear read-only on {path}: {ex.Message}"); }
     }
 }

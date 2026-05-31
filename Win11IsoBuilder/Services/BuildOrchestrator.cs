@@ -144,9 +144,24 @@ public sealed class BuildOrchestrator
     {
         foreach (var dir in new[] { cfg.MediaDir, cfg.MountDir })
         {
-            try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+            try { if (Directory.Exists(dir)) ForceDeleteDirectory(dir); }
             catch (Exception ex) { _log.Warn($"Could not remove {dir}: {ex.Message}"); }
         }
+    }
+
+    /// <summary>
+    /// Delete a tree that may contain read-only files. Extracted Windows media (boot files,
+    /// fonts) is read-only, and Directory.Delete refuses read-only files — clear the attribute first.
+    /// </summary>
+    private static void ForceDeleteDirectory(string dir)
+    {
+        foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        {
+            var attrs = File.GetAttributes(file);
+            if (attrs.HasFlag(FileAttributes.ReadOnly))
+                File.SetAttributes(file, attrs & ~FileAttributes.ReadOnly);
+        }
+        Directory.Delete(dir, recursive: true);
     }
 
     private void Report(IProgress<BuildProgress> p, int pct, string stage, string msg, bool isError = false)

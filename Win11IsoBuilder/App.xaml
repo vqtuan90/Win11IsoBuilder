@@ -3,8 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Win11IsoBuilder.ViewModels"
              xmlns:views="clr-namespace:Win11IsoBuilder.Views"
-             xmlns:sys="clr-namespace:System;assembly=mscorlib"
-             StartupUri="MainWindow.xaml">
+             xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <Application.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <!-- Map each wizard step VM to its View so the shell ContentControl renders the right page. -->

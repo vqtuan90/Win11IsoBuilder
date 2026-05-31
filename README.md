@@ -1,5 +1,7 @@
 # Windows 11 Custom ISO Builder
 
+[![CI](https://github.com/vqtuan90/Win11IsoBuilder/actions/workflows/ci.yml/badge.svg)](https://github.com/vqtuan90/Win11IsoBuilder/actions/workflows/ci.yml)
+
 A Windows desktop app (.NET 8 + WPF, MVVM, admin-elevated) that turns a **user-supplied Windows 11 ISO** into a customized, **unattended** install ISO — with Microsoft 365 Apps and your chosen apps installed **offline** at first boot, common requirement checks bypassed, a local account, bloatware removed, and the computer name set from the machine serial.
 
 Output: a single bootable `.iso` (UEFI + legacy BIOS).

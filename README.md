@@ -110,3 +110,7 @@ Unit tests cover the generators/parsers (XML, scripts, catalog, DISM output). Fu
 ## Status
 
 Implemented end-to-end and validated by real builds on a Windows 11 25H2 ISO (extract → debloat → Office + app staging → dual-boot repack). 35/35 unit tests pass.
+
+## License
+
+[MIT](LICENSE) © 2026 Tuan Vu. Covers this project's source only — not the bundled Microsoft tools (`oscdimg`, ODT) or Windows itself; review their terms separately.

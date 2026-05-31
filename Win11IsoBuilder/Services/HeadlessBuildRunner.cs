@@ -27,6 +27,7 @@ public static class HeadlessBuildRunner
         try
         {
             var cfg = BuildConfigFrom(opts);
+            SelectApps(cfg, opts, log);
             Console.WriteLine($"Source ISO : {cfg.SourceIsoPath}");
             Console.WriteLine($"Output     : {cfg.OutputIsoPath}");
 
@@ -74,6 +75,19 @@ public static class HeadlessBuildRunner
             cfg.Windows.AppxToRemove = d.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
         return cfg;
+    }
+
+    /// <summary>Load the bundled catalog and mark the apps named in --apps "id1,id2" as selected.</summary>
+    private static void SelectApps(BuildConfig cfg, Dictionary<string, string> o, LogService log)
+    {
+        if (!o.TryGetValue("apps", out var csv) || string.IsNullOrWhiteSpace(csv)) return;
+        var want = csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var catalog = new AppCatalogService(log).LoadCatalog();
+        foreach (var a in catalog) a.IsSelected = want.Contains(a.Id);
+        cfg.SelectedApps = catalog;
+        Console.WriteLine($"Apps selected: {string.Join(", ", catalog.Where(a => a.IsSelected).Select(a => a.Id))}");
     }
 
     /// <summary>Peek editions from the ISO and select --edition N, else a Pro SKU, else index 1.</summary>

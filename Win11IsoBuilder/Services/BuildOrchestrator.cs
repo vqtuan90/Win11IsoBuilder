@@ -135,7 +135,7 @@ public sealed class BuildOrchestrator
     private static void PrepareWorkspace(BuildConfig cfg)
     {
         // Fresh media each build; cache (Office/app downloads) is preserved.
-        if (Directory.Exists(cfg.MediaDir)) Directory.Delete(cfg.MediaDir, recursive: true);
+        if (Directory.Exists(cfg.MediaDir)) ForceDeleteDirectory(cfg.MediaDir);
         Directory.CreateDirectory(cfg.MediaDir);
         Directory.CreateDirectory(cfg.CacheDir);
     }
@@ -150,18 +150,32 @@ public sealed class BuildOrchestrator
     }
 
     /// <summary>
-    /// Delete a tree that may contain read-only files. Extracted Windows media (boot files,
-    /// fonts) is read-only, and Directory.Delete refuses read-only files — clear the attribute first.
+    /// Delete a workspace tree robustly. Extracted media files are read-only (inherited from the
+    /// ISO) so clear that first; freshly-written boot files can also be briefly locked by an AV
+    /// scan or a lagging handle release, so retry the delete with backoff before giving up.
     /// </summary>
     private static void ForceDeleteDirectory(string dir)
     {
         foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
         {
-            var attrs = File.GetAttributes(file);
-            if (attrs.HasFlag(FileAttributes.ReadOnly))
-                File.SetAttributes(file, attrs & ~FileAttributes.ReadOnly);
+            try
+            {
+                var attrs = File.GetAttributes(file);
+                if (attrs.HasFlag(FileAttributes.ReadOnly))
+                    File.SetAttributes(file, attrs & ~FileAttributes.ReadOnly);
+            }
+            catch (IOException) { /* locked file — the retry loop below handles it */ }
+            catch (UnauthorizedAccessException) { }
         }
-        Directory.Delete(dir, recursive: true);
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try { Directory.Delete(dir, recursive: true); return; }
+            catch (Exception) when (attempt < 5 && (Directory.Exists(dir)))
+            {
+                Thread.Sleep(attempt * 500); // 0.5s, 1s, 1.5s, 2s
+            }
+        }
     }
 
     private void Report(IProgress<BuildProgress> p, int pct, string stage, string msg, bool isError = false)

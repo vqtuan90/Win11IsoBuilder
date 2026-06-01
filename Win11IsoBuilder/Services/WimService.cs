@@ -100,10 +100,24 @@ public sealed class WimService
         }
     }
 
-    /// <summary>Clear orphaned mounts left by a previous crashed run. Best-effort.</summary>
-    public async Task CleanupOrphanMountsAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Clear orphaned mounts left by a previous run. Best-effort. /Cleanup-Wim only clears
+    /// corrupted/abandoned mounts, so a healthy image still mounted at our workspace mount dir
+    /// (app killed mid-build, or end-of-build cleanup failed) is discarded explicitly first —
+    /// otherwise the next /Mount-Wim fails and the stale mount dir must be deleted by hand.
+    /// </summary>
+    public async Task CleanupOrphanMountsAsync(string mountDir, CancellationToken ct = default)
     {
         _log.Info("Cleaning up any orphaned WIM mounts...");
+
+        // Discard a healthy image still registered at our mount dir from a prior run.
+        var info = await Dism("/Get-MountedImageInfo", ct).ConfigureAwait(false);
+        if (info.Success && info.StdOut.Contains(mountDir, StringComparison.OrdinalIgnoreCase))
+        {
+            _log.Info($"Discarding stale mount at {mountDir}...");
+            await UnmountWimAsync(mountDir, commit: false, ct).ConfigureAwait(false);
+        }
+
         var r = await Dism("/Cleanup-Wim", ct).ConfigureAwait(false);
         if (!r.Success) _log.Warn($"Cleanup-Wim returned {r.ExitCode} (usually harmless).");
     }

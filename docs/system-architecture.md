@@ -433,7 +433,7 @@ This allows real-time log updates without blocking the orchestrator.
 1. **Orphaned Mount Cleanup (Startup):**
    ```csharp
    // Step 2 of pipeline
-   await wim.CleanupOrphanMountsAsync(ct);
+   await wim.CleanupOrphanMountsAsync(cfg.MountDir, ct);
    ```
    Handles previous crashed runs where DISM mount wasn't released.
 

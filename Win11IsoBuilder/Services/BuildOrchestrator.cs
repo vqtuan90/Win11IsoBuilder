@@ -38,7 +38,7 @@ public sealed class BuildOrchestrator
             wim = new WimService(_runner, _log, cfg.Tools.DismPath!);
 
             // 2. Clear any orphaned mounts from a previous crashed run.
-            await wim.CleanupOrphanMountsAsync(ct).ConfigureAwait(false);
+            await wim.CleanupOrphanMountsAsync(cfg.MountDir, ct).ConfigureAwait(false);
 
             // 3. Validate source ISO.
             Report(progress, 5, "Validating", "Checking source ISO...");
@@ -134,8 +134,12 @@ public sealed class BuildOrchestrator
 
     private static void PrepareWorkspace(BuildConfig cfg)
     {
-        // Fresh media each build; cache (Office/app downloads) is preserved.
+        // Fresh media + mount dir each build; cache (Office/app downloads) is preserved. DISM
+        // /Mount-Image requires an empty mount dir, but the prior run's end cleanup is best-effort
+        // and can leave it behind (delayed handle release), so reset it here too. Any live mount was
+        // already discarded by CleanupOrphanMountsAsync above, so the dir is now deletable.
         if (Directory.Exists(cfg.MediaDir)) ForceDeleteDirectory(cfg.MediaDir);
+        if (Directory.Exists(cfg.MountDir)) ForceDeleteDirectory(cfg.MountDir);
         Directory.CreateDirectory(cfg.MediaDir);
         Directory.CreateDirectory(cfg.CacheDir);
     }

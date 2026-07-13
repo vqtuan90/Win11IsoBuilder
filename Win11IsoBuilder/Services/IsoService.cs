@@ -83,6 +83,7 @@ public sealed class IsoService
         var uefiBoot = Path.Combine(mediaDir, "efi", "microsoft", "boot", "efisys.bin");
         if (!File.Exists(biosBoot)) throw new FileNotFoundException("BIOS boot image missing.", biosBoot);
         if (!File.Exists(uefiBoot)) throw new FileNotFoundException("UEFI boot image missing.", uefiBoot);
+        EnsureBootChainIntact(mediaDir);
 
         Directory.CreateDirectory(Path.GetDirectoryName(outIsoPath)!);
 
@@ -100,6 +101,30 @@ public sealed class IsoService
         _log.Info($"ISO created: {outIsoPath} ({sizeBytes / 1024 / 1024} MB)");
         if (sizeBytes > 4L * 1024 * 1024 * 1024)
             _log.Warn("ISO exceeds 4 GB — it will not fit a FAT32 UEFI USB. Use NTFS (Rufus) or split-WIM.");
+    }
+
+    /// <summary>
+    /// etfsboot.com / efisys.bin only get firmware to the boot catalog entry — they then
+    /// chain-load bootmgr / bootmgr.efi using boot\bcd / efi\microsoft\boot\bcd. None of these
+    /// were previously verified, so a robocopy hiccup that dropped just one of them (AV lock,
+    /// transient I/O error) produced a "successful" build whose ISO shows up in the firmware
+    /// boot menu but hangs on a black screen the moment the loader hands off — silent until
+    /// tested on real hardware. Fail the build loudly instead.
+    /// </summary>
+    private static void EnsureBootChainIntact(string mediaDir)
+    {
+        var required = new[]
+        {
+            Path.Combine(mediaDir, "bootmgr"),
+            Path.Combine(mediaDir, "bootmgr.efi"),
+            Path.Combine(mediaDir, "boot", "bcd"),
+            Path.Combine(mediaDir, "efi", "microsoft", "boot", "bcd"),
+        };
+        var missing = required.Where(p => !File.Exists(p)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                "Boot chain incomplete after ISO extraction — refusing to repack a non-bootable ISO. " +
+                $"Missing: {string.Join(", ", missing)}. Re-run the build (likely a transient copy failure).");
     }
 
     // ---- internals ----------------------------------------------------------
@@ -144,7 +169,10 @@ public sealed class IsoService
     {
         // /E recurse incl. empty. /A-:R strips the read-only attribute the files inherit from the
         // read-only ISO mount — DISM cannot mount install.wim for modify if it stays read-only (0xc1510111).
-        var args = $"\"{source.TrimEnd('\\')}\" \"{dest}\" /E /A-:R /R:1 /W:1 /NFL /NDL /NJH /NJS /NP";
+        // /R:5 /W:2 retries transient locks (AV real-time scan grabbing a just-mounted file) instead
+        // of giving up after one attempt — a dropped boot-critical file here builds "successfully"
+        // into a non-bootable ISO (see EnsureBootChainIntact).
+        var args = $"\"{source.TrimEnd('\\')}\" \"{dest}\" /E /A-:R /R:5 /W:2 /NFL /NDL /NJH /NJS /NP";
         var r = await _runner.RunAsync("robocopy.exe", args, timeout: CopyTimeout, cancellationToken: ct)
             .ConfigureAwait(false);
         // robocopy success is exit code < 8 (8+ means at least one file failed).

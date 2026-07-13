@@ -154,21 +154,25 @@ public sealed class BuildOrchestrator
     }
 
     /// <summary>
-    /// Delete a workspace tree robustly. Extracted media files are read-only (inherited from the
-    /// ISO) so clear that first; freshly-written boot files can also be briefly locked by an AV
-    /// scan or a lagging handle release, so retry the delete with backoff before giving up.
+    /// Delete a workspace tree robustly. Extracted media is read-only (inherited from the ISO
+    /// mount) on both files AND directories — RemoveDirectory rejects a read-only-flagged
+    /// directory outright, so a leftover one (e.g. from an interrupted prior build) makes every
+    /// retry below fail identically forever instead of actually being transient. Clear the
+    /// attribute on files and directories alike before deleting; freshly-written boot files can
+    /// also be briefly locked by an AV scan or a lagging handle release, so retry with backoff too.
     /// </summary>
-    private static void ForceDeleteDirectory(string dir)
+    internal static void ForceDeleteDirectory(string dir)
     {
-        foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        foreach (var entry in Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories)
+                     .Append(dir))
         {
             try
             {
-                var attrs = File.GetAttributes(file);
+                var attrs = File.GetAttributes(entry);
                 if (attrs.HasFlag(FileAttributes.ReadOnly))
-                    File.SetAttributes(file, attrs & ~FileAttributes.ReadOnly);
+                    File.SetAttributes(entry, attrs & ~FileAttributes.ReadOnly);
             }
-            catch (IOException) { /* locked file — the retry loop below handles it */ }
+            catch (IOException) { /* locked entry — the retry loop below handles it */ }
             catch (UnauthorizedAccessException) { }
         }
 

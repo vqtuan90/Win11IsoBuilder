@@ -35,6 +35,8 @@ bấm Build → nhận về 1 file ISO tùy biến cài đặt hoàn toàn khôn
 - Tự tải Win11 ISO từ Microsoft.
 - Bất kỳ hình thức kích hoạt license lậu (crack/KMS).
 - Cài app online qua winget lúc first-boot (đã chọn hướng offline).
+
+
 - Hybrid online/offline.
 
 ## 3. Yêu cầu chức năng (Functional Requirements)

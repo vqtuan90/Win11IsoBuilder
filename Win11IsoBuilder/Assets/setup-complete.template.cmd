@@ -1,6 +1,18 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 set "LOG=%WINDIR%\Setup\Scripts\win11builder-firstboot.log"
+set "DONEMARKER=%WINDIR%\Setup\Scripts\.setupcomplete.done"
+
+rem --- This script is invoked twice on non-OEM-key installs: once by Setup's native
+rem --- SetupComplete.cmd auto-run, once by the specialize-pass RunSynchronousCommand
+rem --- added to work around Setup skipping that auto-run on OEM-keyed editions. Guard
+rem --- against running the (non-idempotent) app installers twice.
+if exist "%DONEMARKER%" (
+  echo [%DATE% %TIME%] SetupComplete already ran this build - skipping duplicate invocation >> "%LOG%"
+  goto :end
+)
+type nul > "%DONEMARKER%"
+
 echo [%DATE% %TIME%] SetupComplete starting >> "%LOG%"
 
 rem --- Computer name (runs regardless of payload presence) ---

@@ -57,7 +57,23 @@ public sealed class UnattendBuilder
     private XElement SpecializePass() =>
         Pass("specialize",
             Component("Microsoft-Windows-Shell-Setup",
-                new XElement(U + "ComputerName", "*"))); // real name set at first boot
+                new XElement(U + "ComputerName", "*")), // real name set at first boot
+            Component("Microsoft-Windows-Deployment",
+                new XElement(U + "RunSynchronous", RunSetupCompleteCommand())));
+
+    /// <summary>
+    /// Windows Setup only auto-runs %WINDIR%\Setup\Scripts\SetupComplete.cmd on Enterprise/Server
+    /// editions; it silently skips it whenever a firmware-embedded OEM product key is present
+    /// (the case on almost every retail/prebuilt PC) — Office/app install then never happens, with
+    /// no error anywhere. Explicitly invoking the same script from an unattend RunSynchronousCommand
+    /// is unaffected by that OEM-key gate (Microsoft's own guidance), so this is the reliable trigger;
+    /// the native auto-run becomes a harmless no-op duplicate guarded by a marker file in the script.
+    /// </summary>
+    private static XElement RunSetupCompleteCommand() =>
+        new XElement(U + "RunSynchronousCommand",
+            new XAttribute(Wcm + "action", "add"),
+            new XElement(U + "Order", 1),
+            new XElement(U + "Path", @"cmd.exe /c ""%WINDIR%\Setup\Scripts\SetupComplete.cmd"""));
 
     private XElement OobePass(WinCustomizationOptions o)
     {

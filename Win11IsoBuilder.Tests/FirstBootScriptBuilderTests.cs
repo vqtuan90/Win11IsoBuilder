@@ -1,3 +1,4 @@
+using System.IO;
 using Win11IsoBuilder.Models;
 using Win11IsoBuilder.Services;
 
@@ -96,5 +97,21 @@ public class FirstBootScriptBuilderTests
 
         Assert.Contains("$mode = 'Fixed'", ps1);
         Assert.Contains("$fixed = 'OfficePC1'", ps1);
+    }
+
+    // ---- Double-invocation guard ---------------------------------------------
+
+    [Fact]
+    public void SetupCompleteTemplate_GuardsAgainstDoubleInvocation()
+    {
+        // Windows Setup's native SetupComplete.cmd auto-run and the specialize-pass
+        // RunSynchronousCommand (added because Setup skips that auto-run on OEM-keyed
+        // editions — see UnattendBuilder.RunSetupCompleteCommand) can both fire this script
+        // on the same install. It must not re-run the (non-idempotent) app installers.
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "setup-complete.template.cmd");
+        var content = File.ReadAllText(path);
+
+        Assert.Contains("DONEMARKER", content);
+        Assert.Contains("goto :end", content);
     }
 }

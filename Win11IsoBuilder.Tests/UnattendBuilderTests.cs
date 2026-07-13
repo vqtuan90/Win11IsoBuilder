@@ -70,4 +70,19 @@ public class UnattendBuilderTests
         var doc = new UnattendBuilder().Build(new WinCustomizationOptions());
         Assert.Contains(doc.Descendants(U + "ComputerName"), e => e.Value == "*");
     }
+
+    [Fact]
+    public void Build_SpecializePassExplicitlyInvokesSetupComplete()
+    {
+        // Windows Setup skips its native SetupComplete.cmd auto-run on OEM-keyed editions
+        // (retail/prebuilt PCs) — this RunSynchronousCommand is the OEM-key-safe trigger.
+        var doc = new UnattendBuilder().Build(new WinCustomizationOptions());
+        var specialize = doc.Descendants(U + "settings")
+            .First(s => s.Attribute("pass")?.Value == "specialize");
+
+        var path = specialize.Descendants(U + "Path").Select(p => p.Value)
+            .FirstOrDefault(p => p.Contains("SetupComplete.cmd"));
+        Assert.NotNull(path);
+        Assert.Contains(@"%WINDIR%\Setup\Scripts\SetupComplete.cmd", path);
+    }
 }

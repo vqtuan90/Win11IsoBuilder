@@ -318,6 +318,16 @@ When the built ISO boots on a target machine and reaches Setup Complete phase:
 
 4. First Boot → SetupComplete.cmd runs (SYSTEM context)
    ├─ Located: %WINDIR%\Setup\Scripts\SetupComplete.cmd
+   ├─ **Triggered two ways** (script is idempotent — guarded by a
+   │  %WINDIR%\Setup\Scripts\.setupcomplete.done marker so only one runs):
+   │  ├─ Setup's native auto-run — but Windows Setup SILENTLY SKIPS this on
+   │  │  any edition with a firmware-embedded OEM product key (the case on
+   │  │  almost every retail/prebuilt PC), except Enterprise/Server
+   │  │  (see Microsoft Learn "Add a Custom Script to Windows Setup")
+   │  └─ specialize-pass RunSynchronousCommand added to autounattend.xml
+   │     (UnattendBuilder.RunSetupCompleteCommand) — explicitly invokes the
+   │     same script; this trigger is unaffected by the OEM-key restriction,
+   │     so it is the reliable path on real hardware
    ├─ **set-computername.ps1 runs first**
    │  ├─ Queries BIOS serial: Get-WmiObject Win32_SystemEnclosure
    │  ├─ Sanitizes: alphanumeric + hyphen, ≤15 chars

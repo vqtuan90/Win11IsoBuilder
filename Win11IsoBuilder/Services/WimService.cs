@@ -68,7 +68,12 @@ public sealed class WimService
         EnsureSuccess(r, "Mount-Wim");
     }
 
-    /// <summary>Commit (save edits) or discard, then unmount. Always call in a finally.</summary>
+    /// <summary>
+    /// Commit (save edits) or discard, then unmount. Always call in a finally. A failed
+    /// COMMIT throws — continuing would silently ship an ISO without the requested edits
+    /// (debloat/drivers) while reporting success. A failed discard only logs: discard runs
+    /// on cleanup paths that must never mask the original failure.
+    /// </summary>
     public async Task UnmountWimAsync(string mountDir, bool commit, CancellationToken ct = default)
     {
         var mode = commit ? "/Commit" : "/Discard";
@@ -76,7 +81,11 @@ public sealed class WimService
         // Do not propagate caller cancellation here: unmount must finish to free the mount.
         var r = await Dism($"/Unmount-Wim /MountDir:\"{mountDir}\" {mode}", CancellationToken.None)
             .ConfigureAwait(false);
-        if (!r.Success) _log.Error($"Unmount-Wim failed ({r.ExitCode}). Run Cleanup if mount is stuck.");
+        if (!r.Success)
+        {
+            _log.Error($"Unmount-Wim failed ({r.ExitCode}). Run Cleanup if mount is stuck.");
+            if (commit) EnsureSuccess(r, "Unmount-Wim (/Commit)");
+        }
     }
 
     public async Task<List<ProvisionedAppx>> GetProvisionedAppxAsync(string mountDir, CancellationToken ct = default)
@@ -97,6 +106,23 @@ public sealed class WimService
                 .ConfigureAwait(false);
             if (r.Success) _log.Info($"Removed appx: {pkg}");
             else _log.Warn($"Could not remove appx {pkg} (exit {r.ExitCode}) — continuing.");
+        }
+    }
+
+    /// <summary>
+    /// Inject every driver folder (recursive .inf scan) into the mounted image. One failing
+    /// folder does not stop the rest — Setup still works with a partial driver set.
+    /// </summary>
+    public async Task AddDriversAsync(string mountDir, IEnumerable<string> driverFolders, CancellationToken ct = default)
+    {
+        foreach (var folder in driverFolders)
+        {
+            ct.ThrowIfCancellationRequested();
+            var r = await Dism(
+                $"/Image:\"{mountDir}\" /Add-Driver /Driver:\"{folder}\" /Recurse", ct)
+                .ConfigureAwait(false);
+            if (r.Success) _log.Info($"Added drivers from: {folder}");
+            else _log.Warn($"Could not add drivers from {folder} (exit {r.ExitCode}) — continuing.");
         }
     }
 

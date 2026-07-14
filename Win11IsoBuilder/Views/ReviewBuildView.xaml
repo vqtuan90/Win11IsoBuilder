@@ -7,6 +7,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -16,8 +17,18 @@
             <TextBlock Text="{Binding AdkWarning}" TextWrapping="Wrap" Foreground="#92400E" />
         </Border>
 
+        <!-- Zero-touch wipe warning + driver summary -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <Border Background="#FEE2E2" Padding="10" Margin="0,0,0,6"
+                    Visibility="{Binding ZeroTouchEnabled, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding ZeroTouchWarning}" TextWrapping="Wrap"
+                           Foreground="#B91C1C" FontWeight="SemiBold" />
+            </Border>
+            <TextBlock Text="{Binding DriversSummary}" Foreground="#6B7280" FontSize="11" />
+        </StackPanel>
+
         <!-- Output -->
-        <Grid Grid.Row="1" Margin="0,0,0,10">
+        <Grid Grid.Row="2" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="180" />
@@ -33,7 +44,7 @@
         </Grid>
 
         <!-- Build controls -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
             <Button Content="Build ISO" Command="{Binding BuildCommand}" Width="120" Height="34"
                     FontWeight="SemiBold" Margin="0,0,8,0" />
             <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" Height="34"
@@ -41,13 +52,13 @@
         </StackPanel>
 
         <!-- Progress -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,8">
+        <StackPanel Grid.Row="4" Margin="0,0,0,8">
             <ProgressBar Height="18" Minimum="0" Maximum="100" Value="{Binding ProgressPercent}" />
             <TextBlock Text="{Binding StatusMessage}" Margin="0,4,0,0" TextWrapping="Wrap" />
         </StackPanel>
 
         <!-- Live log -->
-        <Border Grid.Row="4" BorderBrush="#D1D5DB" BorderThickness="1">
+        <Border Grid.Row="5" BorderBrush="#D1D5DB" BorderThickness="1">
             <TextBox Text="{Binding LogText, Mode=OneWay}" IsReadOnly="True"
                      FontFamily="Consolas" FontSize="11" Background="#111827" Foreground="#9CA3AF"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"

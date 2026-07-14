@@ -35,6 +35,14 @@ public sealed class WinCustomizationOptions
     /// <summary>Input locale / keyboard layout id (00000409 = US).</summary>
     public string InputLocale { get; set; } = "0409:00000409";
 
+    /// <summary>
+    /// MDT-style zero-touch install (default): Setup wipes Disk 0, auto-partitions
+    /// (GPT on UEFI, MBR on legacy BIOS) and installs without any prompt. Turn off to
+    /// get the interactive drive picker instead. Supersedes the original "always show
+    /// the drive picker" decision (user decision, 2026-07-14).
+    /// </summary>
+    public bool AutoPartition { get; set; } = true;
+
     // Computer name.
     public ComputerNameMode ComputerNameMode { get; set; } = ComputerNameMode.Serial;
     public string FixedComputerName { get; set; } = string.Empty;

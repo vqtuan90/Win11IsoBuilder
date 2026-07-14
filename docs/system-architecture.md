@@ -302,14 +302,16 @@ When the built ISO boots on a target machine and reaches Setup Complete phase:
 ```
 1. Setup loads the autounattend.xml from media root
    ├─ LabConfig keys bypass TPM/SecureBoot/RAM checks
+   ├─ WinPE runs auto-partition.cmd from the media (zero-touch default):
+   │  detects firmware (PEFirmwareType) → diskpart wipes Disk 0 → GPT (UEFI) or MBR (BIOS) layout
    ├─ LocalAccount (admin) auto-created
    ├─ Region, timezone, keyboard applied
    ├─ ComputerName="*" (placeholder; will be set at first-boot)
-   └─ No disk partitioning (Setup shows drive picker to user)
+   └─ ImageInstall applies the chosen edition + AcceptEula (no prompts)
 
-2. User selects a disk to install to
-   ├─ Setup proceeds without prompts (unattended)
-   └─ Installs Windows to chosen partition
+2. Zero-touch OFF (--no-auto-partition): Setup shows the drive picker instead
+   ├─ User selects a disk to install to
+   └─ Setup then proceeds without further prompts
 
 3. OOBE (Out-of-Box Experience)
    ├─ Network setup (auto)

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "intel-rst-vmd-19",
+    "name": "Intel RST VMD storage driver 19.5.8.1059.2",
+    "sourceUrl": "https://downloadmirror.intel.com/849934/SetupRST.exe",
+    "fileName": "SetupRST.exe",
+    "sha256": "8AF488ECD76258A0A539ADA28098A2961472D670572900AED216F48C712BC45B",
+    "note": "Covers Intel Core 11th-14th gen VMD controllers (9A0B/467F/A77F). Core Ultra (Series 1/2) needs the RST 20.x driver: download SetupRST.exe from Intel, run 'SetupRST.exe -extractdrivers <folder>' and add that folder as a custom driver folder."
+  }
+]

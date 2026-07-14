@@ -28,6 +28,11 @@ bấm Build → nhận về 1 file ISO tùy biến cài đặt hoàn toàn khôn
   - **Gỡ bloatware** mặc định (Candy Crush, Xbox, …) qua DISM provisioned appx.
   - Cấu hình sẵn: ngôn ngữ/region, timezone, layout bàn phím, computer name.
   - **Computer name = serial number của máy** (lấy động lúc first-boot, có sanitize + fallback).
+  - **Zero-touch mặc định (kiểu MDT):** tự wipe + phân vùng Disk 0 (GPT/UEFI, MBR/BIOS), tự chọn
+    edition, accept EULA → cài không cần bấm gì. Opt-out để quay lại drive picker.
+- **Inject driver ổ cứng Intel VMD/RST** (Intel Core Gen 11+) vào `boot.wim` + `install.wim`
+  (DISM /Add-Driver) — Setup thấy ổ NVMe trên máy bật VMD; nguồn: catalog pinned (SetupRST.exe,
+  SHA-256, extract bằng `-extractdrivers`) + thư mục driver user tự cung cấp.
 - Đầu ra: **1 file `.iso`** bootable UEFI + Legacy BIOS (đóng gói bằng `oscdimg`, UDF).
 
 ### Out-of-scope (vòng này)
@@ -57,6 +62,8 @@ bấm Build → nhận về 1 file ISO tùy biến cài đặt hoàn toàn khôn
 | FR-12 | Repack ISO bootable (UEFI+BIOS) bằng `oscdimg`; đặt tên file đầu ra. |
 | FR-13 | UI wizard từng bước; thanh tiến trình + log realtime cho quá trình build. |
 | FR-14 | Phát hiện Windows ADK/oscdimg; nếu thiếu → hướng dẫn cài (hoặc bundle oscdimg). |
+| FR-15 | Inject driver storage Intel VMD/RST vào `boot.wim` (mọi index) + `install.wim`; catalog pinned (URL+SHA-256, mặc định bật, tắt được) + N thư mục driver user (quét `.inf` recursive); driver hỏng/URL chết → warn, build tiếp. |
+| FR-16 | Zero-touch mặc định: WinPE script phát hiện firmware → diskpart wipe Disk 0 (GPT/MBR), `ImageInstall` theo index đã chọn, AcceptEula, chặn prompt key; opt-out (UI + `--no-auto-partition`) → drive picker như cũ. |
 
 ## 4. Yêu cầu phi chức năng (Non-Functional)
 
@@ -112,5 +119,11 @@ thư mục media → Repack ISO (oscdimg UEFI+BIOS) → Xuất `.iso`.
 2. ✅ **Catalog app** → Chrome, Firefox, 7-Zip, VLC, Notepad++, Zalo, Unikey + user tự thêm installer.
 3. ✅ **Office** → M365 Apps for business (`O365BusinessRetail`), ngôn ngữ **en-US**, **64-bit**.
 4. ✅ **Preset** → YAGNI, bỏ vòng này (BuildConfig vẫn serialize được nếu cần sau).
-5. ✅ **Phân vùng đĩa** → dừng cho user chọn ổ (an toàn, không tự wipe disk 0); phần còn lại unattended.
+5. ~~✅ **Phân vùng đĩa** → dừng cho user chọn ổ (an toàn, không tự wipe disk 0); phần còn lại unattended.~~
+   **SUPERSEDED 2026-07-14 (Validation Session 2):** user chốt zero-touch kiểu MDT là **mặc định**
+   (tự wipe + phân vùng Disk 0); drive picker trở thành opt-out (UI + `--no-auto-partition`).
+   Rủi ro wipe nhầm ổ được chấp nhận như MDT; cảnh báo đỏ 2 lớp trong UI.
 6. ✅ **First-boot** → SetupComplete.cmd (quyền SYSTEM), không dùng AutoLogon.
+7. ✅ **Driver Intel VMD (2026-07-14)** → cả 2 nguồn: catalog pinned (Intel RST 19.5.8, SetupRST.exe
+   `-extractdrivers`, SHA-256 verify — Intel đã ngừng phát hành F6 zip) + thư mục driver user.
+   Gen 11–14 cover bởi catalog; Core Ultra → user tự cấp driver RST 20.x (URL Intel 20.x không ổn định).

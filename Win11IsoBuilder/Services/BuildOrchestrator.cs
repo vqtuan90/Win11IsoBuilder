@@ -59,34 +59,68 @@ public sealed class BuildOrchestrator
             var (wimPath, index) = await wim.EnsureEditableWimAsync(
                 sources, cfg.SelectedEdition?.Index ?? 1, ct).ConfigureAwait(false);
 
-            // 6. Remove bloatware (mount → remove → commit). try/finally guards the unmount.
-            if (cfg.Windows.AppxToRemove.Count > 0)
+            // 5b. Resolve storage drivers (Intel VMD catalog + user folders) and service
+            //     boot.wim so Setup can see NVMe disks behind Intel VMD (11th-gen+ platforms).
+            Report(progress, 33, "Drivers", "Resolving storage driver packages...");
+            var drivers = new DriverInjectionService(_runner, _log);
+            var driverFolders = await drivers.ResolveDriverFoldersAsync(cfg.Drivers, cfg.CacheDir, ct)
+                .ConfigureAwait(false);
+            if (driverFolders.Count > 0)
             {
-                Report(progress, 40, "Removing bloatware", $"Mounting image (index {index})...");
+                Report(progress, 36, "Drivers", "Injecting storage drivers into boot.wim...");
+                try
+                {
+                    await drivers.InjectBootWimDriversAsync(wim, Path.Combine(sources, "boot.wim"),
+                        cfg.MountDir, driverFolders, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    // Driver-only failure keeps the warn-not-fail contract: the ISO still
+                    // installs everywhere except VMD machines, and install.wim still gets
+                    // the drivers below. The failed mount was already discarded.
+                    _log.Warn($"boot.wim driver injection failed ({ex.Message}) — " +
+                              "Setup may not see NVMe disks behind Intel VMD. Continuing.");
+                }
+            }
+
+            // 6. Service install.wim in one mount: remove bloatware + inject drivers, then commit.
+            if (cfg.Windows.AppxToRemove.Count > 0 || driverFolders.Count > 0)
+            {
+                Report(progress, 40, "Servicing image", $"Mounting image (index {index})...");
                 await wim.MountWimAsync(wimPath, index, cfg.MountDir, ct).ConfigureAwait(false);
                 mounted = true;
 
-                // Map selected family patterns → actual versioned PackageNames in this image.
-                var installed = await wim.GetProvisionedAppxAsync(cfg.MountDir, ct).ConfigureAwait(false);
-                // Match the exact provisioned family: PackageName is "<Family>_<version>_...",
-                // so require the underscore boundary to avoid prefixes like People→PeopleExperienceHost.
-                var toRemove = installed
-                    .Where(p => cfg.Windows.AppxToRemove.Any(pat =>
-                        p.PackageName.StartsWith(pat + "_", StringComparison.OrdinalIgnoreCase) ||
-                        p.DisplayName.Equals(pat, StringComparison.OrdinalIgnoreCase)))
-                    .Select(p => p.PackageName)
-                    .ToList();
-                _log.Info($"Bloatware: {toRemove.Count} package(s) matched for removal.");
-                await wim.RemoveProvisionedAppxAsync(cfg.MountDir, toRemove, ct).ConfigureAwait(false);
+                if (cfg.Windows.AppxToRemove.Count > 0)
+                {
+                    // Map selected family patterns → actual versioned PackageNames in this image.
+                    var installed = await wim.GetProvisionedAppxAsync(cfg.MountDir, ct).ConfigureAwait(false);
+                    // Match the exact provisioned family: PackageName is "<Family>_<version>_...",
+                    // so require the underscore boundary to avoid prefixes like People→PeopleExperienceHost.
+                    var toRemove = installed
+                        .Where(p => cfg.Windows.AppxToRemove.Any(pat =>
+                            p.PackageName.StartsWith(pat + "_", StringComparison.OrdinalIgnoreCase) ||
+                            p.DisplayName.Equals(pat, StringComparison.OrdinalIgnoreCase)))
+                        .Select(p => p.PackageName)
+                        .ToList();
+                    _log.Info($"Bloatware: {toRemove.Count} package(s) matched for removal.");
+                    await wim.RemoveProvisionedAppxAsync(cfg.MountDir, toRemove, ct).ConfigureAwait(false);
+                }
 
-                Report(progress, 55, "Removing bloatware", "Committing image changes...");
+                if (driverFolders.Count > 0)
+                {
+                    Report(progress, 50, "Drivers", "Injecting storage drivers into install.wim...");
+                    await wim.AddDriversAsync(cfg.MountDir, driverFolders, ct).ConfigureAwait(false);
+                }
+
+                Report(progress, 55, "Servicing image", "Committing image changes...");
                 await wim.UnmountWimAsync(cfg.MountDir, commit: true, ct).ConfigureAwait(false);
                 mounted = false;
             }
 
-            // 7. autounattend.xml.
+            // 7. autounattend.xml (zero-touch needs the post-export image index for ImageInstall).
             Report(progress, 60, "Configuring Windows", "Writing autounattend.xml...");
-            new UnattendBuilder(_log).Write(cfg.Windows, cfg.MediaDir);
+            new UnattendBuilder(_log).Write(cfg.Windows, cfg.MediaDir, index);
 
             // 8. Office payload.
             if (cfg.Office.Enabled)

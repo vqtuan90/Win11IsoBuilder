@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 using Win11IsoBuilder.Models;
 
 namespace Win11IsoBuilder.ViewModels;
@@ -33,7 +35,30 @@ public partial class WindowsCustomizeViewModel : WizardStepViewModel
     public ObservableCollection<BloatwareItem> Bloatware { get; } = new();
     public Array ComputerNameModes => Enum.GetValues(typeof(ComputerNameMode));
 
+    /// <summary>User-supplied driver folders, mirrored into <c>Config.Drivers.DriverFolders</c>.</summary>
+    public ObservableCollection<string> DriverFolders { get; } = new();
+    [ObservableProperty] private string? _selectedDriverFolder;
+
     public override bool CanProceed => !string.IsNullOrWhiteSpace(Config.Windows.LocalUsername);
+
+    [RelayCommand]
+    private void AddDriverFolder()
+    {
+        var dlg = new OpenFolderDialog { Title = "Select a driver folder (contains .inf files)" };
+        if (dlg.ShowDialog() != true || DriverFolders.Contains(dlg.FolderName)) return;
+        DriverFolders.Add(dlg.FolderName);
+        SyncDriverFolders();
+    }
+
+    [RelayCommand]
+    private void RemoveDriverFolder()
+    {
+        if (SelectedDriverFolder is null) return;
+        DriverFolders.Remove(SelectedDriverFolder);
+        SyncDriverFolders();
+    }
+
+    private void SyncDriverFolders() => Config.Drivers.DriverFolders = DriverFolders.ToList();
 
     private void OnBloatwareToggled(object? sender, PropertyChangedEventArgs e)
     {

@@ -9,27 +9,31 @@ See `../prd.md` (Vietnamese original) or `project-overview-pdr.md` (English tran
 ```
 Win11IsoBuilder.sln
 ├── Win11IsoBuilder/
-│   ├── Models/                 8 POCO contracts (BuildConfig is the single source of truth)
+│   ├── Models/                 10 POCO contracts (BuildConfig is the single source of truth)
 │   │   ├── BuildConfig.cs      Input selections + derived workspace paths
 │   │   ├── BuildProgress.cs    UI progress reporting (percent, stage, message)
 │   │   ├── ToolPaths.cs        Resolved DISM/oscdimg/ODT paths
 │   │   ├── WindowsEdition.cs   WIM edition (index, name)
-│   │   ├── WinCustomizationOptions.cs  Bypass toggles, admin user, appx-remove list
+│   │   ├── WinCustomizationOptions.cs  Bypass toggles, admin user, appx-remove list, AutoPartition (zero-touch default)
 │   │   ├── OfficeOptions.cs    Enable flag + language/bitness/exclude modules
 │   │   ├── AppEntry.cs         Name, URL, silent flags, SHA-256 hash
-│   │   └── AppInstallCommand.cs  Resolved installer path + command-line
-│   ├── Services/               11 service classes (UI-agnostic, logged via ILogSink)
+│   │   ├── AppInstallCommand.cs  Resolved installer path + command-line
+│   │   ├── DriverOptions.cs    Intel VMD toggle (default on) + user driver folders
+│   │   └── DriverPackage.cs    Pinned driver-catalog entry (URL, SHA-256, SetupRST.exe)
+│   ├── Services/               13 service classes (UI-agnostic, logged via ILogSink)
 │   │   ├── ProcessRunner.cs    Async wrapper: dism/oscdimg/setup.exe/robocopy; stdout/stderr capture; timeout; live callback
 │   │   ├── LogService.cs       ILogSink impl: file + event (EntryLogged)
 │   │   ├── ToolDetectionService.cs  Detect DISM (System32) + oscdimg (bundled or ADK); IsAdkMissing flag
 │   │   ├── IsoService.cs       Mount ISO, robocopy extract, validate media, oscdimg dual-boot repack
-│   │   ├── WimService.cs       DISM mount/unmount, ESD→WIM export, appx list/remove, orphan cleanup
-│   │   ├── UnattendBuilder.cs  autounattend.xml via XDocument (LabConfig bypass, local account, locale, ComputerName="*")
+│   │   ├── WimService.cs       DISM mount/unmount, ESD→WIM export, appx list/remove, Add-Driver, orphan cleanup
+│   │   ├── DriverInjectionService.cs  Driver catalog acquire (download+SHA256+SetupRST -extractdrivers), folder resolve, boot.wim servicing
+│   │   ├── HashVerifier.cs     Shared SHA-256 file verification (app + driver downloads)
+│   │   ├── UnattendBuilder.cs  autounattend.xml via XDocument (LabConfig bypass, local account, locale, ComputerName="*", zero-touch ImageInstall/EULA/partition script)
 │   │   ├── FirstBootScriptBuilder.cs  SetupComplete.cmd + set-computername.ps1 (serial sanitize, offline app loop)
 │   │   ├── OfficeOdtService.cs  ODT configuration.xml (XDocument), offline download (cached), stage to Payload/Office
 │   │   ├── AppCatalogService.cs  Load Assets/app-catalog.json, add user installers, acquire + SHA-256 verify, stage to Payload/Apps
-│   │   ├── HeadlessBuildRunner.cs  Parse CLI args (--build, --iso, --out, --edition, --debloat, --office, --apps)
-│   │   ├── BuildOrchestrator.cs  10-step pipeline: detect tools → extract → ESD→WIM → debloat → unattend → Office → apps → scripts → repack → cleanup
+│   │   ├── HeadlessBuildRunner.cs  Parse CLI args (--build, --iso, --out, --edition, --debloat, --office, --apps, --drivers, --no-vmd, --no-auto-partition)
+│   │   ├── BuildOrchestrator.cs  Pipeline: detect tools → extract → ESD→WIM → resolve drivers → boot.wim drivers → debloat+drivers (install.wim) → unattend (+partition script) → Office → apps → scripts → repack → cleanup
 │   │   └── Dism/
 │   │       └── DismOutputParser.cs  Pure-text parsing (no subprocess); unit-tested with fixtures
 │   ├── ViewModels/             7 view-model classes (CommunityToolkit.Mvvm)
@@ -48,8 +52,10 @@ Win11IsoBuilder.sln
 │   │   ├── AppsView.xaml       Catalog grid, Add app modal
 │   │   ├── ReviewBuildView.xaml  Summary, log viewer, Build/Cancel buttons
 │   │   └── App.xaml            Global DataTemplate definitions
-│   ├── Assets/                 JSON catalog, first-boot templates
+│   ├── Assets/                 JSON catalogs, first-boot + WinPE templates
 │   │   ├── app-catalog.json    7 preset apps (Chrome, Firefox, 7-Zip, VLC, Notepad++, Zalo, Unikey)
+│   │   ├── driver-catalog.json Pinned Intel RST VMD driver (SetupRST.exe 19.5.8, SHA-256)
+│   │   ├── auto-partition.cmd  WinPE zero-touch script: firmware detect → diskpart GPT/MBR wipe of Disk 0
 │   │   ├── SetupComplete.cmd   Template: SYSTEM context, payload discovery, app loop
 │   │   └── set-computername.ps1  Template: serial→sanitize→NetBIOS or WIN-xxxxxx fallback
 │   ├── tools/                  (gitignored) Large Microsoft redistributables
@@ -59,7 +65,8 @@ Win11IsoBuilder.sln
 └── Win11IsoBuilder.Tests/
     ├── Win11IsoBuilder.Tests.csproj  net8.0-windows, references main project
     ├── DismOutputParserTests.cs  6 tests: parse provision list, get-imageinfo, error output
-    ├── UnattendBuilderTests.cs   5 tests: LabConfig keys, local account, locale/timezone
+    ├── DriverInjectionServiceTests.cs  10 tests: catalog load/pin, folder resolve, .inf detection, malformed-catalog resilience, unpinned-package refusal
+    ├── UnattendBuilderTests.cs   12 tests: LabConfig keys, local account, locale/timezone, zero-touch on/off, partition script
     ├── FirstBootScriptBuilderTests.cs  4 tests: serial sanitize, script templates, offline app loop
     ├── OfficeOdtServiceTests.cs  4 tests: configuration.xml structure, lang/bitness
     ├── AppCatalogServiceTests.cs  8 tests: JSON load, user install, SHA-256 verify
@@ -72,7 +79,7 @@ Win11IsoBuilder.sln
 - **Total lines:** ~2783 LOC (source only, excluding tests, assets, obj/)
 - **Largest file:** 163 LOC (BuildOrchestrator)
 - **Services:** All <200 LOC per file (modular design)
-- **Unit tests:** 35 tests across 7 test classes, all passing
+- **Unit tests:** 53 tests across 8 test classes, all passing
 - **CI:** GitHub Actions (windows-latest, .NET 8, build + test on push/PR)
 
 ## Key Components & Responsibilities
@@ -82,13 +89,14 @@ Win11IsoBuilder.sln
 | **Pipeline** | `BuildOrchestrator` | `RunAsync(BuildConfig, IProgress, CancellationToken)` — orchestrates 10 steps with robust cleanup. |
 | **Process** | `ProcessRunner` | `RunAsync(filename, args, timeout, cancel, lineCallback)` — DRY subprocess wrapper for dism, oscdimg, setup.exe, robocopy. |
 | **ISO** | `IsoService` | `ExtractIsoAsync`, `ValidateMedia`, `RepackIsoAsync` (oscdimg dual-boot). Warns if >4 GB. |
-| **WIM** | `WimService` | `GetImageInfoAsync`, `EnsureEditableWimAsync` (ESD→WIM), `MountWimAsync`, `UnmountWimAsync`, `GetProvisionedAppxAsync/RemoveProvisionedAppxAsync`, `CleanupOrphanMountsAsync`. |
-| **Unattend** | `UnattendBuilder` | `Build()` → XDocument (LabConfig, local account, locale, timezone, keyboard, ComputerName="*", no partitioning). |
+| **WIM** | `WimService` | `GetImageInfoAsync`, `EnsureEditableWimAsync` (ESD→WIM), `MountWimAsync`, `UnmountWimAsync`, `GetProvisionedAppxAsync/RemoveProvisionedAppxAsync`, `AddDriversAsync` (DISM /Add-Driver /Recurse), `CleanupOrphanMountsAsync`. |
+| **Drivers** | `DriverInjectionService` | `LoadCatalog()`, `ResolveDriverFoldersAsync` (catalog acquire + user folder validate; failures warn, never fail the build), `AcquireAndExtractAsync` (download → SHA-256 → `SetupRST.exe -extractdrivers`), `InjectBootWimDriversAsync` (every boot.wim index). |
+| **Unattend** | `UnattendBuilder` | `Build(options, imageIndex)` → XDocument (LabConfig, local account, locale, timezone, keyboard, ComputerName="*"; zero-touch default: ImageInstall + AcceptEula + WinPE partition command; `AutoPartition=false` → drive picker). `Write` stages `auto-partition.cmd` to the media root. |
 | **First Boot** | `FirstBootScriptBuilder` | `BuildSetupCompleteCmd`, `BuildComputerNameScript` (serial sanitize to ≤15 chars, fallback WIN-xxxxxx). |
 | **Office** | `OfficeOdtService` | `DownloadOfflineAsync()` → XDocument configuration.xml, ODT offline /download, stage to Payload/Office. |
 | **Apps** | `AppCatalogService` | `LoadCatalog()` (JSON), `AcquireInstallerAsync` (download + SHA-256 verify), `StageToPayloadAsync`. |
 | **Tools** | `ToolDetectionService` | `Detect()` → ToolPaths (DISM, oscdimg bundled-first then ADK, IsAdkMissing flag). |
-| **CLI** | `HeadlessBuildRunner` | `RunAsync(args)` — parses --build --iso --out [--name] [--edition] [--debloat] [--office] [--apps]. |
+| **CLI** | `HeadlessBuildRunner` | `RunAsync(args)` — parses --build --iso --out [--name] [--edition] [--debloat] [--office] [--apps] [--drivers] [--no-vmd] [--no-auto-partition]. |
 | **Log** | `LogService` | `ILogSink` impl; event + file output. |
 | **UI** | `MainViewModel` + 5 step VMs | MVVM wizard, step validation, live log binding, async Build + Cancel. |
 
@@ -155,5 +163,5 @@ If `oscdimg` is missing, ToolDetectionService will look in the ADK registry loca
 
 ---
 
-**Status:** Production-ready (all 8 phases complete, AC-1 validated, 35/35 tests pass, public GitHub repo)
-**Last Updated:** 2026-05-31
+**Status:** Production-ready (all 8 original phases + driver-injection/zero-touch plan complete, AC-1 validated, 53/53 tests pass, public GitHub repo)
+**Last Updated:** 2026-07-14

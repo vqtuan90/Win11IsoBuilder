@@ -47,6 +47,31 @@
                          ToolTip="Used only when mode is Fixed" />
             </StackPanel>
 
+            <TextBlock Text="Storage drivers" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <CheckBox Content="Inject Intel VMD/RST storage driver (Intel Core 11th gen and newer)"
+                      IsChecked="{Binding Config.Drivers.IncludeIntelVmd}" Margin="0,0,0,4" />
+            <TextBlock Text="Without this driver, Windows Setup cannot see NVMe drives on modern Intel laptops (VMD enabled in BIOS)."
+                       Foreground="#6B7280" FontSize="11" Margin="0,0,0,6" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                <ListBox Width="380" MinHeight="28" MaxHeight="80" Margin="0,0,8,0"
+                         ItemsSource="{Binding DriverFolders}"
+                         SelectedItem="{Binding SelectedDriverFolder}" />
+                <StackPanel>
+                    <Button Content="Add folder..." Command="{Binding AddDriverFolderCommand}"
+                            Width="100" Height="26" Margin="0,0,0,4" />
+                    <Button Content="Remove" Command="{Binding RemoveDriverFolderCommand}"
+                            Width="100" Height="26" />
+                </StackPanel>
+            </StackPanel>
+            <TextBlock Text="(Optional extra driver folders — every .inf inside is injected, e.g. RST 20.x for Core Ultra.)"
+                       Foreground="#6B7280" FontSize="11" />
+
+            <TextBlock Text="Installation mode" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <CheckBox Content="Fully automated install (like MDT) — ERASES DISK 0 of the target machine"
+                      IsChecked="{Binding Config.Windows.AutoPartition}" />
+            <TextBlock Text="WARNING: Setup wipes and partitions Disk 0 with no prompt. Untick to get the interactive drive picker instead."
+                       Foreground="#B91C1C" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
+
             <TextBlock Text="Remove bloatware" FontWeight="SemiBold" Margin="0,12,0,4" />
             <ItemsControl ItemsSource="{Binding Bloatware}">
                 <ItemsControl.ItemsPanel>

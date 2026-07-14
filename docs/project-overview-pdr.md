@@ -110,9 +110,14 @@ All AC validated via manual playbook: [`docs/vm-smoke-test-playbook.md`](vm-smok
 2. ✅ **App catalog** — 7 preset apps (Chrome, Firefox, 7-Zip, VLC, Notepad++ with SHA-256 pinning; Zalo, Unikey user-supplied).
 3. ✅ **Office** — M365 Apps for Business (`O365BusinessRetail`), English (en-US), 64-bit. Legal ODT only.
 4. ✅ **Preset save/load** — YAGNI; deferred. BuildConfig serializable if needed later.
-5. ✅ **Disk partitioning** — Setup shows user the drive picker; no auto-wipe (safety).
+5. ~~✅ **Disk partitioning** — Setup shows user the drive picker; no auto-wipe (safety).~~
+   **SUPERSEDED 2026-07-14:** MDT-style zero-touch is now the **default** (WinPE script wipes +
+   partitions Disk 0, GPT/MBR by firmware; ImageInstall + AcceptEula). Drive picker is the opt-out
+   (UI toggle / `--no-auto-partition`). Wipe risk accepted per user decision; double red warning in UI.
 6. ✅ **First-boot** — SetupComplete.cmd (SYSTEM context), not AutoLogon (simplicity + safety).
 7. ✅ **CLI headless mode** — `--build --iso <p> --out <dir>` for CI/automation/smoke tests.
+8. ✅ **Intel VMD driver sources (2026-07-14)** — both: pinned catalog (RST 19.5.8 `SetupRST.exe`,
+   SHA-256, `-extractdrivers`; Intel discontinued the F6 zip) + user-supplied driver folders.
 
 ---
 

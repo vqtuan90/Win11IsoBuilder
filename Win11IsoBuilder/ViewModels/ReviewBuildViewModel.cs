@@ -39,6 +39,16 @@ public partial class ReviewBuildViewModel : WizardStepViewModel
         ? "oscdimg not found. Bundle it under tools\\oscdimg or install the Windows ADK before building."
         : string.Empty;
 
+    // Evaluated each time the Review step's view is (re)created, so they reflect the
+    // latest choices made in step 2 (the config POCOs raise no change notifications).
+    public bool ZeroTouchEnabled => Config.Windows.AutoPartition;
+    public string ZeroTouchWarning =>
+        "Fully automated install is ON — Disk 0 of the target machine will be ERASED without any prompt. " +
+        "Go back to step 2 to switch to the interactive drive picker.";
+    public string DriversSummary =>
+        $"Storage drivers: Intel VMD {(Config.Drivers.IncludeIntelVmd ? "ON" : "off")}" +
+        $" | custom folders: {Config.Drivers.DriverFolders.Count}";
+
     public string OutputName
     {
         get => Config.OutputIsoName;

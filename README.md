@@ -11,11 +11,17 @@ Output: a single bootable `.iso` (UEFI + legacy BIOS).
 ## Features
 
 - **Bring your own ISO** — mounts + customizes a Win11 ISO you provide (never downloads Windows).
+- **Intel VMD/RST storage driver injection** — the pinned Intel RST driver (SHA-256 verified, extracted
+  from `SetupRST.exe -extractdrivers`) plus any custom driver folders are injected into `boot.wim`
+  and `install.wim`, so Setup sees NVMe drives on Intel Core 11th-gen+ machines with VMD enabled.
 - **Unattended setup** via generated `autounattend.xml`:
   - Bypass **TPM 2.0 / Secure Boot / RAM / Storage / CPU** checks (LabConfig keys).
   - Skip Microsoft account → create a **local administrator**.
   - Region / time zone / keyboard; computer name placeholder.
-  - **Disk is not auto-partitioned** — Setup shows the drive picker (avoids wiping the wrong disk).
+  - **MDT-style zero-touch by default** — ⚠️ **ERASES DISK 0**: a WinPE script wipes and partitions
+    Disk 0 (GPT on UEFI, MBR on legacy BIOS), the edition is applied and the EULA accepted with no
+    prompts. Untick *Fully automated install* (or pass `--no-auto-partition`) to get the interactive
+    drive picker instead.
 - **Bloatware removal** — curated provisioned-Appx checklist, applied via DISM on the mounted image.
 - **Microsoft 365 Apps (offline)** via the Office Deployment Tool — downloads the source once (cached) and stages it onto the media. Legal ODT only; **no KMS/crack** — you sign in to activate.
 - **App catalog** — Chrome, Firefox, 7-Zip, VLC, Notepad++ (pinned versions + **SHA-256 verified**), plus add-your-own `.exe`/`.msi` with silent flags. All staged for **offline** install.
@@ -60,11 +66,15 @@ Win11IsoBuilder.exe --build --iso <source.iso> --out <folder>
                     [--name out.iso] [--edition N]
                     [--debloat "Microsoft.BingNews,Microsoft.BingWeather"]
                     [--office] [--apps "chrome,firefox,7zip,vlc,notepadpp"]
+                    [--drivers "C:\drv1;C:\drv2"] [--no-vmd] [--no-auto-partition]
 ```
 
 - `--edition` omitted → auto-selects a **Pro** SKU (else index 1).
 - `--office` enables Microsoft 365 (off by default).
 - `--apps` are ids from `Win11IsoBuilder/Assets/app-catalog.json`.
+- `--drivers` adds custom driver folders (semicolon-separated; every `.inf` inside is injected).
+- `--no-vmd` skips the pinned Intel VMD driver; `--no-auto-partition` restores the drive picker
+  (zero-touch **wipes Disk 0** and is ON by default).
 - Exits `0` on success; the finished `.iso` is written to `--out`.
 
 Example (Office + apps):
@@ -77,7 +87,7 @@ Win11IsoBuilder.exe --build --iso C:\ISO\Win11.iso --out C:\Out `
 
 ## How it works (pipeline)
 
-`Detect tools → extract ISO → (ESD→WIM) → mount → remove appx → commit → autounattend.xml → stage Office payload → stage app payload → write first-boot scripts → oscdimg repack → cleanup`
+`Detect tools → extract ISO → (ESD→WIM) → resolve drivers → inject drivers into boot.wim → mount install.wim → remove appx + inject drivers → commit → autounattend.xml (+ zero-touch partition script) → stage Office payload → stage app payload → write first-boot scripts → oscdimg repack → cleanup`
 
 A single `BuildConfig` flows through every service; the WIM mount is always unmounted in a `finally` so a failure never leaves a stuck mount.
 
@@ -105,6 +115,9 @@ Unit tests cover the generators/parsers (XML, scripts, catalog, DISM output). Fu
 
 - Only the **legal** ODT flow is used for Office; **no activation bypass** (no KMS/MAK/crack). Licensing is the user's responsibility — sign in to activate.
 - TPM/Secure Boot bypass uses the standard community LabConfig registry keys and only affects setup of the ISO you build.
+- ⚠️ **Zero-touch installs erase Disk 0 of whatever machine boots the ISO** — label your media clearly and disable *Fully automated install* when building for mixed hardware.
+- ⚠️ **Multi-disk machines:** only Disk 0 is wiped, but Setup installs to the *first available* partition — on a machine with a second disk holding a large empty partition, Windows may land on that disk instead. Disconnect extra disks or use `--no-auto-partition` on such machines.
+- The Intel RST catalog driver covers Core 11th–14th gen VMD controllers. For Core Ultra, download `SetupRST.exe` (RST 20.x) from Intel, run `SetupRST.exe -extractdrivers <folder>`, and add that folder under **Storage drivers** (or `--drivers`).
 - `oscdimg` / ODT are Microsoft tools — review their licenses before redistributing.
 
 ## Status

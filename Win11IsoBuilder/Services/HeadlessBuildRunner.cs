@@ -8,7 +8,10 @@ namespace Win11IsoBuilder.Services;
 /// Runs a build from the command line (no GUI) for automation / smoke tests:
 ///   --build --iso "x.iso" --out "C:\out" [--name file.iso] [--edition N]
 ///           [--debloat "Microsoft.BingNews,Microsoft.BingWeather"] [--office]
-/// Office and apps are OFF unless requested, keeping a smoke test fast.
+///           [--drivers "C:\drv1;C:\drv2"] [--no-vmd] [--no-auto-partition]
+/// Office and apps are OFF unless requested, keeping a smoke test fast. The pinned Intel
+/// VMD storage driver and MDT-style zero-touch install (wipes Disk 0!) are ON by default
+/// (disable with --no-vmd / --no-auto-partition).
 /// </summary>
 public static class HeadlessBuildRunner
 {
@@ -73,6 +76,11 @@ public static class HeadlessBuildRunner
 
         if (o.TryGetValue("debloat", out var d) && !string.IsNullOrWhiteSpace(d))
             cfg.Windows.AppxToRemove = d.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+        if (o.TryGetValue("drivers", out var drv) && !string.IsNullOrWhiteSpace(drv))
+            cfg.Drivers.DriverFolders = drv.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (o.ContainsKey("no-vmd")) cfg.Drivers.IncludeIntelVmd = false;
+        if (o.ContainsKey("no-auto-partition")) cfg.Windows.AutoPartition = false;
 
         return cfg;
     }

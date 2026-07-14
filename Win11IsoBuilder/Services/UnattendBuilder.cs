@@ -7,11 +7,14 @@ namespace Win11IsoBuilder.Services;
 /// <summary>
 /// Generates a well-formed autounattend.xml from <see cref="WinCustomizationOptions"/>.
 /// Built with XDocument (not string templating) so namespaces and password escaping are
-/// always valid. Disk partitioning is intentionally omitted → Setup shows the drive picker
-/// (safe; avoids wiping the wrong disk). Computer name is "*" here and set for real at first boot.
+/// always valid. By default the install is MDT-style zero-touch: a WinPE script wipes and
+/// partitions Disk 0 (GPT on UEFI, MBR on BIOS) and ImageInstall picks the edition, so Setup
+/// never prompts. With <see cref="WinCustomizationOptions.AutoPartition"/> off, partitioning
+/// is omitted → Setup shows the drive picker. Computer name is "*" here, set at first boot.
 /// </summary>
 public sealed class UnattendBuilder
 {
+    private const string PartitionScriptName = "auto-partition.cmd";
     private static readonly XNamespace U = "urn:schemas-microsoft-com:unattend";
     private static readonly XNamespace Wcm = "http://schemas.microsoft.com/WMIConfig/2002/State";
 
@@ -20,29 +23,45 @@ public sealed class UnattendBuilder
     public UnattendBuilder(ILogSink? log = null) => _log = log;
 
     /// <summary>Build the document in memory (used by tests and the pipeline).</summary>
-    public XDocument Build(WinCustomizationOptions o)
+    /// <param name="imageIndex">install.wim index Setup should apply (post-ESD-export layout).</param>
+    public XDocument Build(WinCustomizationOptions o, int imageIndex = 1)
     {
         var unattend = new XElement(U + "unattend",
             new XAttribute(XNamespace.Xmlns + "wcm", Wcm.NamespaceName),
-            WindowsPePass(o),
+            WindowsPePass(o, imageIndex),
             SpecializePass(),
             OobePass(o));
         return new XDocument(new XDeclaration("1.0", "utf-8", null), unattend);
     }
 
-    /// <summary>Build and write to <c>media\autounattend.xml</c> (ISO root).</summary>
-    public string Write(WinCustomizationOptions o, string mediaDir)
+    /// <summary>
+    /// Build and write to <c>media\autounattend.xml</c> (ISO root). Zero-touch mode also
+    /// stages the disk-preparation script next to it so WinPE can find it on the media.
+    /// </summary>
+    public string Write(WinCustomizationOptions o, string mediaDir, int imageIndex = 1)
     {
         var path = Path.Combine(mediaDir, "autounattend.xml");
-        Build(o).Save(path);
+        Build(o, imageIndex).Save(path);
         _log?.Info($"Wrote autounattend.xml → {path}");
+
+        if (o.AutoPartition)
+        {
+            var asset = Path.Combine(AppContext.BaseDirectory, "Assets", PartitionScriptName);
+            File.Copy(asset, Path.Combine(mediaDir, PartitionScriptName), overwrite: true);
+            _log?.Info($"Staged {PartitionScriptName} → media root (zero-touch install).");
+        }
         return path;
     }
 
-    private XElement WindowsPePass(WinCustomizationOptions o)
+    private XElement WindowsPePass(WinCustomizationOptions o, int imageIndex)
     {
-        var setup = Component("Microsoft-Windows-Setup",
-            new XElement(U + "RunSynchronous", BypassCommands(o)));
+        var setupContent = new List<object> { new XElement(U + "RunSynchronous", RunSyncCommands(o)) };
+        if (o.AutoPartition)
+        {
+            setupContent.Add(ImageInstall(imageIndex));
+            setupContent.Add(UserData());
+        }
+        var setup = Component("Microsoft-Windows-Setup", setupContent.ToArray());
 
         var intl = Component("Microsoft-Windows-International-Core-WinPE",
             new XElement(U + "SetupUILanguage", new XElement(U + "UILanguage", o.UiLanguage)),
@@ -107,7 +126,7 @@ public sealed class UnattendBuilder
                         new XElement(U + "Value", o.LocalPassword),
                         new XElement(U + "PlainText", "true")))));
 
-    private IEnumerable<XElement> BypassCommands(WinCustomizationOptions o)
+    private IEnumerable<XElement> RunSyncCommands(WinCustomizationOptions o)
     {
         var keys = new List<string>();
         if (o.BypassTpm) keys.Add("BypassTPMCheck");
@@ -119,13 +138,48 @@ public sealed class UnattendBuilder
         var order = 1;
         foreach (var key in keys)
         {
-            yield return new XElement(U + "RunSynchronousCommand",
-                new XAttribute(Wcm + "action", "add"),
-                new XElement(U + "Order", order++),
-                new XElement(U + "Path",
-                    $@"reg add HKLM\System\Setup\LabConfig /v {key} /t REG_DWORD /d 1 /f"));
+            yield return RunSync(order++,
+                $@"reg add HKLM\System\Setup\LabConfig /v {key} /t REG_DWORD /d 1 /f");
+        }
+
+        // WinPE assigns the install media a letter we cannot know up-front, so scan for the
+        // staged script; exit /b stops after the first hit so a stray copy on another volume
+        // cannot run the wipe twice. RunSynchronous executes before Setup's disk/ImageInstall
+        // handling, which is exactly when the disk must be wiped and partitioned.
+        if (o.AutoPartition)
+        {
+            yield return RunSync(order++,
+                @"cmd.exe /c ""for %d in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do " +
+                $@"@if exist %d:\{PartitionScriptName} (call %d:\{PartitionScriptName} & exit /b)""");
         }
     }
+
+    private static XElement RunSync(int order, string path) =>
+        new(U + "RunSynchronousCommand",
+            new XAttribute(Wcm + "action", "add"),
+            new XElement(U + "Order", order),
+            new XElement(U + "Path", path));
+
+    /// <summary>Apply the chosen edition to the partition the script just created — no prompts.</summary>
+    private static XElement ImageInstall(int imageIndex) =>
+        new(U + "ImageInstall",
+            new XElement(U + "OSImage",
+                new XElement(U + "InstallFrom",
+                    new XElement(U + "MetaData",
+                        new XAttribute(Wcm + "action", "add"),
+                        new XElement(U + "Key", "/IMAGE/INDEX"),
+                        new XElement(U + "Value", imageIndex))),
+                // EFI/MSR are too small to qualify, so "first available" is the OS partition
+                // on both GPT and MBR layouts (whose partition ids differ — hence no InstallTo).
+                new XElement(U + "InstallToAvailablePartition", "true"),
+                new XElement(U + "WillShowUI", "OnError")));
+
+    /// <summary>Accept the EULA and suppress the product-key prompt for full zero-touch.</summary>
+    private static XElement UserData() =>
+        new(U + "UserData",
+            new XElement(U + "AcceptEula", "true"),
+            new XElement(U + "ProductKey",
+                new XElement(U + "WillShowUI", "OnError")));
 
     private static XElement Pass(string passName, params object[] components) =>
         new(U + "settings", new XAttribute("pass", passName), components);

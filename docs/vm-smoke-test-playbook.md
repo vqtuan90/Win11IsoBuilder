@@ -15,7 +15,8 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
 1. Launch `Win11IsoBuilder` (accept the UAC prompt).
 2. Step 1: pick the source ISO, choose an edition (e.g. Windows 11 Pro).
 3. Step 2: keep bypass toggles on; set a local admin user/pass; pick a few bloatware items;
-   set Computer name = **Serial**.
+   set Computer name = **Serial**. Keep **Intel VMD driver** and **Fully automated install** ticked
+   (defaults) — the build log must show driver download/cache + Add-Driver into boot.wim and install.wim.
 4. Step 3: enable Office (or disable to speed up the first pass).
 5. Step 4: tick 2–3 apps with direct URLs (e.g. 7-Zip, VLC, Notepad++).
 6. Step 5: name the output, click **Build ISO**. Watch progress + log.
@@ -25,11 +26,23 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
 
 1. Hyper-V: create a **Gen 2** VM, **Secure Boot OFF** (to exercise the bypass), 4 GB RAM, 64 GB disk.
 2. Attach the built ISO as DVD; boot.
-3. **Expected:**
+3. **Expected (zero-touch default):**
    - Setup does **not** block on TPM / Secure Boot / RAM. ✅ AC-3 (partial)
-   - Setup shows the **drive picker** (disk not auto-wiped); pick the VM disk, continue.
+   - **No drive picker, no EULA, no edition prompt** — Disk 0 is wiped + partitioned automatically
+     (GPT on Gen 2/UEFI) and install proceeds with **zero clicks**. ✅ AC-Z1
    - OOBE does **not** force a Microsoft account; the **local account** is created. ✅ AC-3
    - Install completes **unattended** past OOBE. ✅ AC-2
+4. Repeat on a **Gen 1** VM (legacy BIOS): same zero-touch behavior with an MBR layout. ✅ AC-Z2
+5. Rebuild with `--no-auto-partition` (or untick *Fully automated install*): Setup stops at the
+   **drive picker** as before. ✅ AC-Z3
+   - Optional multi-disk check: add a second virtual disk with a large empty partition and confirm
+     where Setup installs — `InstallToAvailablePartition` picks the first qualifying partition on
+     ANY disk (documented limitation; README warns to detach extra disks).
+6. **Intel VMD driver (AC-D3):** VMs cannot emulate the VMD controller — final verification needs a
+   real Intel Core 11th-gen+ machine with VMD enabled in BIOS: boot the ISO and confirm Setup lists
+   the NVMe drive and the installed OS boots (no INACCESSIBLE_BOOT_DEVICE). To verify injection
+   offline instead: `dism /Mount-Wim` the built ISO's boot.wim and run
+   `dism /Image:<mount> /Get-Drivers` → expect `iastorvd.inf`. ✅ AC-D1
 
 ## Post-install verification (AC-4, AC-5, AC-6)
 

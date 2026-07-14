@@ -34,6 +34,9 @@ public sealed class BuildConfig
     public WinCustomizationOptions Windows { get; set; } = new();
     public OfficeOptions Office { get; set; } = new();
 
+    /// <summary>Storage-driver injection (Intel VMD catalog + user driver folders).</summary>
+    public DriverOptions Drivers { get; set; } = new();
+
     /// <summary>Catalog picks + user-added installers that will be staged offline.</summary>
     public IList<AppEntry> SelectedApps { get; set; } = new List<AppEntry>();
 

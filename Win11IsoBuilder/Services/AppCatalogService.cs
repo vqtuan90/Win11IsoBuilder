@@ -1,6 +1,5 @@
 using System.IO;
 using System.Net.Http;
-using System.Security.Cryptography;
 using System.Text.Json;
 using Win11IsoBuilder.Models;
 
@@ -67,7 +66,7 @@ public sealed class AppCatalogService
         Directory.CreateDirectory(appsCache);
         var dest = Path.Combine(appsCache, app.FileName);
 
-        if (File.Exists(dest) && await IsHashOkAsync(dest, app.Sha256, ct).ConfigureAwait(false))
+        if (File.Exists(dest) && await HashVerifier.IsHashOkAsync(dest, app.Sha256, ct).ConfigureAwait(false))
         {
             _log.Info($"Using cached installer: {app.Id}");
             return dest;
@@ -80,7 +79,7 @@ public sealed class AppCatalogService
         else
             throw new InvalidOperationException($"App '{app.Id}' has no source URL or local file.");
 
-        if (!await IsHashOkAsync(dest, app.Sha256, ct).ConfigureAwait(false))
+        if (!await HashVerifier.IsHashOkAsync(dest, app.Sha256, ct).ConfigureAwait(false))
             throw new InvalidOperationException($"SHA-256 mismatch for {app.Id}.");
         return dest;
     }
@@ -129,14 +128,6 @@ public sealed class AppCatalogService
         resp.EnsureSuccessStatusCode();
         await using var fs = File.Create(dest);
         await resp.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
-    }
-
-    private static async Task<bool> IsHashOkAsync(string path, string? expected, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(expected)) return true;
-        await using var fs = File.OpenRead(path);
-        var hash = await SHA256.HashDataAsync(fs, ct).ConfigureAwait(false);
-        return Convert.ToHexString(hash).Equals(expected.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static string Sanitize(string s) =>

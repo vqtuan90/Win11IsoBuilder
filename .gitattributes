@@ -1,0 +1,4 @@
+# WinPE/first-boot batch scripts must stay CRLF — cmd.exe parsing of parenthesized
+# blocks and for /f loops is unreliable with LF-only endings.
+*.cmd text eol=crlf
+*.bat text eol=crlf

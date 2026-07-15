@@ -46,6 +46,25 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
    offline instead: `dism /Mount-Wim` the built ISO's boot.wim and run
    `dism /Image:<mount> /Get-Drivers` → expect `iastorvd.inf`. ✅ AC-D1
 
+## Real hardware (USB) test
+
+1. **Write the ISO to USB with Rufus** (install.wim > 4 GB does not fit FAT32; Rufus handles the
+   NTFS + UEFI:NTFS split automatically):
+   - Partition scheme **GPT**, target **UEFI (non CSM)** for modern machines.
+   - When Rufus shows its **"Windows User Experience"** customization dialog, **UNCHECK every
+     option** (TPM bypass, local account, ...) — Rufus would otherwise write its own
+     `autounattend.xml` and override the builder's automation.
+2. ⚠️ **The machine that boots this USB gets Disk 0 ERASED with no prompt.** Unplug external
+   disks; double-check nothing valuable is on the machine.
+3. BIOS: keep **VMD/RST enabled** (that is what the driver injection is for); Secure Boot can stay
+   ON (media uses signed Microsoft boot files; the LabConfig keys only bypass the requirement check).
+4. Expected: Setup lists the NVMe drive (VMD driver loaded), wipes/partitions Disk 0, installs and
+   reaches the desktop with zero interaction; computer name = BIOS serial (sanitized); apps + Office
+   install offline at first boot (`%WINDIR%\Setup\Scripts\win11builder-firstboot.log`).
+5. **If partitioning fails immediately:** some firmware enumerates the USB stick itself as Disk 0 —
+   the wipe then hits the USB and Setup stops with an error (no data loss on internal disks).
+   Retry with the stick in another port, or rebuild with `--no-auto-partition` for that machine.
+
 ## Post-install verification (AC-4, AC-5, AC-6)
 
 After first boot reaches the desktop, check:

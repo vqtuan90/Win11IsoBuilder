@@ -17,6 +17,8 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
 3. Step 2: keep bypass toggles on; set a local admin user/pass; pick a few bloatware items;
    set Computer name = **Serial**. Keep **Intel VMD driver** and **Fully automated install** ticked
    (defaults) — the build log must show driver download/cache + Add-Driver into boot.wim and install.wim.
+   On a 24H2/25H2 source ISO the log must also show "ConX Setup media detected — forcing legacy Setup"
+   and "Wrote winpeshl.ini (legacy Setup)" — without this, OOBE asks region/keyboard and apps never install.
 4. Step 3: enable Office (or disable to speed up the first pass).
 5. Step 4: tick 2–3 apps with direct URLs (e.g. 7-Zip, VLC, Notepad++).
 6. Step 5: name the output, click **Build ISO**. Watch progress + log.

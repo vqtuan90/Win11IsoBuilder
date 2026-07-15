@@ -14,6 +14,10 @@ Output: a single bootable `.iso` (UEFI + legacy BIOS).
 - **Intel VMD/RST storage driver injection** — the pinned Intel RST driver (SHA-256 verified, extracted
   from `SetupRST.exe -extractdrivers`) plus any custom driver folders are injected into `boot.wim`
   and `install.wim`, so Setup sees NVMe drives on Intel Core 11th-gen+ machines with VMD enabled.
+- **Win11 24H2/25H2 fix (automatic)** — the new "ConX" Setup on 24H2+ media silently ignores the
+  `specialize`/`oobeSystem` unattend passes (interactive OOBE, no first-boot app install). The builder
+  detects such media and patches `boot.wim` with a `winpeshl.ini` that launches the legacy
+  `setup.exe /legacy`, restoring fully unattended installs.
 - **Unattended setup** via generated `autounattend.xml`:
   - Bypass **TPM 2.0 / Secure Boot / RAM / Storage / CPU** checks (LabConfig keys).
   - Skip Microsoft account → create a **local administrator**.

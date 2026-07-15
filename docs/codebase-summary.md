@@ -20,13 +20,14 @@ Win11IsoBuilder.sln
 │   │   ├── AppInstallCommand.cs  Resolved installer path + command-line
 │   │   ├── DriverOptions.cs    Intel VMD toggle (default on) + user driver folders
 │   │   └── DriverPackage.cs    Pinned driver-catalog entry (URL, SHA-256, SetupRST.exe)
-│   ├── Services/               13 service classes (UI-agnostic, logged via ILogSink)
+│   ├── Services/               14 service classes (UI-agnostic, logged via ILogSink)
 │   │   ├── ProcessRunner.cs    Async wrapper: dism/oscdimg/setup.exe/robocopy; stdout/stderr capture; timeout; live callback
 │   │   ├── LogService.cs       ILogSink impl: file + event (EntryLogged)
 │   │   ├── ToolDetectionService.cs  Detect DISM (System32) + oscdimg (bundled or ADK); IsAdkMissing flag
 │   │   ├── IsoService.cs       Mount ISO, robocopy extract, validate media, oscdimg dual-boot repack
 │   │   ├── WimService.cs       DISM mount/unmount, ESD→WIM export, appx list/remove, Add-Driver, orphan cleanup
-│   │   ├── DriverInjectionService.cs  Driver catalog acquire (download+SHA256+SetupRST -extractdrivers), folder resolve, boot.wim servicing
+│   │   ├── DriverInjectionService.cs  Driver catalog acquire (download+SHA256+SetupRST -extractdrivers), folder resolve, boot.wim servicing (drivers + legacy-Setup patch)
+│   │   ├── LegacySetupPatcher.cs  ConX detection (setup.exe build ≥ 26100) + winpeshl.ini forcing legacy setup.exe — Win11 24H2+ ConX Setup drops specialize/oobeSystem unattend passes
 │   │   ├── HashVerifier.cs     Shared SHA-256 file verification (app + driver downloads)
 │   │   ├── UnattendBuilder.cs  autounattend.xml via XDocument (LabConfig bypass, local account, locale, ComputerName="*", zero-touch ImageInstall/EULA/partition script)
 │   │   ├── FirstBootScriptBuilder.cs  SetupComplete.cmd + set-computername.ps1 (serial sanitize, offline app loop)
@@ -79,7 +80,7 @@ Win11IsoBuilder.sln
 - **Total lines:** ~2783 LOC (source only, excluding tests, assets, obj/)
 - **Largest file:** 163 LOC (BuildOrchestrator)
 - **Services:** All <200 LOC per file (modular design)
-- **Unit tests:** 53 tests across 8 test classes, all passing
+- **Unit tests:** 60 tests across 9 test classes, all passing
 - **CI:** GitHub Actions (windows-latest, .NET 8, build + test on push/PR)
 
 ## Key Components & Responsibilities

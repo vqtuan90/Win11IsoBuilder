@@ -136,13 +136,15 @@ public sealed class DriverInjectionService
     }
 
     /// <summary>
-    /// Inject the resolved driver folders into every image inside boot.wim (WinPE + Setup).
-    /// Each index is mounted, serviced, and committed; a failure discards that mount so the
-    /// workspace is never left with a stuck mount.
+    /// Service every image inside boot.wim (WinPE + Setup) in a single pass per index:
+    /// inject the resolved driver folders and, on ConX media (Win11 24H2+), write the
+    /// legacy-Setup winpeshl.ini into the Setup image so autounattend's specialize and
+    /// oobeSystem passes are honored. Each index is mounted, serviced, and committed only
+    /// when changed; a failure discards that mount so the workspace never keeps a stuck mount.
     /// </summary>
-    public async Task InjectBootWimDriversAsync(
+    public async Task ServiceBootWimAsync(
         WimService wim, string bootWimPath, string mountDir,
-        IReadOnlyList<string> driverFolders, CancellationToken ct = default)
+        IReadOnlyList<string> driverFolders, bool forceLegacySetup, CancellationToken ct = default)
     {
         if (!File.Exists(bootWimPath))
         {
@@ -150,15 +152,26 @@ public sealed class DriverInjectionService
             return;
         }
 
+        var patched = false;
         var images = await wim.GetImageInfoAsync(bootWimPath, ct).ConfigureAwait(false);
         foreach (var image in images)
         {
-            _log.Info($"Injecting drivers into boot.wim index {image.Index} ({image.Name})...");
+            _log.Info($"Servicing boot.wim index {image.Index} ({image.Name})...");
             await wim.MountWimAsync(bootWimPath, image.Index, mountDir, ct).ConfigureAwait(false);
             try
             {
-                await wim.AddDriversAsync(mountDir, driverFolders, ct).ConfigureAwait(false);
-                await wim.UnmountWimAsync(mountDir, commit: true, ct).ConfigureAwait(false);
+                var changed = false;
+                if (driverFolders.Count > 0)
+                {
+                    await wim.AddDriversAsync(mountDir, driverFolders, ct).ConfigureAwait(false);
+                    changed = true;
+                }
+                if (forceLegacySetup && LegacySetupPatcher.TryPatchMountedImage(mountDir))
+                {
+                    _log.Info($"Wrote winpeshl.ini (legacy Setup) into boot.wim index {image.Index}.");
+                    patched = changed = true;
+                }
+                await wim.UnmountWimAsync(mountDir, commit: changed, ct).ConfigureAwait(false);
             }
             catch
             {
@@ -168,6 +181,10 @@ public sealed class DriverInjectionService
                 throw;
             }
         }
+
+        if (forceLegacySetup && !patched)
+            throw new InvalidOperationException(
+                "No boot.wim image contained sources\\setup.exe — could not apply the legacy-Setup patch.");
     }
 
     /// <summary>True when the folder holds at least one .inf anywhere below it.</summary>

@@ -65,16 +65,23 @@ public sealed class BuildOrchestrator
             var drivers = new DriverInjectionService(_runner, _log);
             var driverFolders = await drivers.ResolveDriverFoldersAsync(cfg.Drivers, cfg.CacheDir, ct)
                 .ConfigureAwait(false);
-            if (driverFolders.Count > 0)
+            // Win11 24H2+ ships the new ConX Setup, which silently drops the specialize +
+            // oobeSystem passes of autounattend (interactive OOBE, no app install). Patching
+            // boot.wim to launch the legacy setup.exe restores full unattended behavior.
+            var conx = LegacySetupPatcher.IsConXMedia(sources);
+            if (conx) _log.Info("Win11 24H2+ (ConX Setup) media detected — forcing legacy Setup " +
+                                "so OOBE automation and first-boot app install work.");
+
+            if (driverFolders.Count > 0 || conx)
             {
-                Report(progress, 36, "Drivers", "Injecting storage drivers into boot.wim...");
+                Report(progress, 36, "Servicing boot.wim", "Injecting drivers / legacy-Setup patch...");
                 try
                 {
-                    await drivers.InjectBootWimDriversAsync(wim, Path.Combine(sources, "boot.wim"),
-                        cfg.MountDir, driverFolders, ct).ConfigureAwait(false);
+                    await drivers.ServiceBootWimAsync(wim, Path.Combine(sources, "boot.wim"),
+                        cfg.MountDir, driverFolders, conx, ct).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
+                catch (Exception ex) when (!conx)
                 {
                     // Driver-only failure keeps the warn-not-fail contract: the ISO still
                     // installs everywhere except VMD machines, and install.wim still gets
@@ -82,6 +89,8 @@ public sealed class BuildOrchestrator
                     _log.Warn($"boot.wim driver injection failed ({ex.Message}) — " +
                               "Setup may not see NVMe disks behind Intel VMD. Continuing.");
                 }
+                // On ConX media the patch is NOT optional: without it the built ISO silently
+                // loses OOBE automation and offline app install, so the failure must surface.
             }
 
             // 6. Service install.wim in one mount: remove bloatware + inject drivers, then commit.

@@ -121,8 +121,8 @@ Unit tests cover the generators/parsers (XML, scripts, catalog, DISM output). Fu
 
 - Only the **legal** ODT flow is used for Office; **no activation bypass** (no KMS/MAK/crack). Licensing is the user's responsibility — sign in to activate.
 - TPM/Secure Boot bypass uses the standard community LabConfig registry keys and only affects setup of the ISO you build.
-- ⚠️ **Zero-touch installs erase Disk 0 of whatever machine boots the ISO** — label your media clearly and disable *Fully automated install* when building for mixed hardware.
-- ⚠️ **Multi-disk machines:** only Disk 0 is wiped, but Setup installs to the *first available* partition — on a machine with a second disk holding a large empty partition, Windows may land on that disk instead. Disconnect extra disks or use `--no-auto-partition` on such machines.
+- ⚠️ **Zero-touch installs erase an internal disk of whatever machine boots the ISO** — label your media clearly and disable *Fully automated install* when building for mixed hardware. The boot USB itself is detected and never wiped; the first internal (non-USB) disk is the target.
+- ⚠️ **Multiple internal disks:** the first internal disk that is not the boot USB is wiped, and Setup installs to the *first available* partition. On a machine with two internal disks, Windows may land on the wrong one. Disconnect extra disks or use `--no-auto-partition` on such machines.
 - The Intel RST catalog driver covers Core 11th–14th gen VMD controllers. For Core Ultra, download `SetupRST.exe` (RST 20.x) from Intel, run `SetupRST.exe -extractdrivers <folder>`, and add that folder under **Storage drivers** (or `--drivers`).
 - `oscdimg` / ODT are Microsoft tools — review their licenses before redistributing.
 

@@ -181,6 +181,12 @@ public class UnattendBuilderTests
         // Unknown firmware must leave the disk untouched (no wrong-layout wipe).
         Assert.Contains(@"else if ""%FW%""==""0x1""", script);
         Assert.Contains("exit /b 1", script);
+        // MUST NOT wipe a hardcoded disk 0 — the boot USB is often disk 0 and would be
+        // erased mid-setup. Target is resolved dynamically, excluding the boot USB's disk.
+        Assert.DoesNotContain("select disk 0", script);
+        Assert.Contains("select disk %TARGET%", script);
+        Assert.Contains("USBDISK", script);      // boot-media disk is identified
+        Assert.Contains("list disk", script);    // and excluded from target selection
     }
 
     private static string NewTempDir()

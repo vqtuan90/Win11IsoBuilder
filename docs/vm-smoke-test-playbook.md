@@ -54,8 +54,9 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
    - When Rufus shows its **"Windows User Experience"** customization dialog, **UNCHECK every
      option** (TPM bypass, local account, ...) — Rufus would otherwise write its own
      `autounattend.xml` and override the builder's automation.
-2. ⚠️ **The machine that boots this USB gets Disk 0 ERASED with no prompt.** Unplug external
-   disks; double-check nothing valuable is on the machine.
+2. ⚠️ **The machine that boots this USB gets its internal disk ERASED with no prompt.** The boot
+   USB is detected (via the disk it runs from) and excluded, so it is never wiped; but unplug
+   external/extra disks and double-check nothing valuable is on the machine's internal drive.
 3. BIOS: keep **VMD/RST enabled** (that is what the driver injection is for); Secure Boot can stay
    ON (media uses signed Microsoft boot files; the LabConfig keys only bypass the requirement check).
 4. Expected: Setup lists the NVMe drive (VMD driver loaded), wipes/partitions Disk 0, installs and

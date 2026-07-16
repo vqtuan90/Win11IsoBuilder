@@ -14,11 +14,19 @@ public class LegacySetupPatcherTests
         Assert.Equal(expected, LegacySetupPatcher.IsConXBuild(build));
 
     [Fact]
-    public void WinpeshlIni_LaunchesLegacySetupWithCrlf()
+    public void WinpeshlIni_RunsWpeinitThenRootLegacySetupWithCrlf()
     {
-        Assert.StartsWith("[LaunchApps]\r\n", LegacySetupPatcher.WinpeshlIni);
-        Assert.Contains(@"\sources\setup.exe, /legacy", LegacySetupPatcher.WinpeshlIni);
-        Assert.EndsWith("\r\n", LegacySetupPatcher.WinpeshlIni);
+        var ini = LegacySetupPatcher.WinpeshlIni;
+        Assert.StartsWith("[LaunchApps]\r\n", ini);
+        // wpeinit must run first (startnet.cmd no longer runs once winpeshl.ini exists).
+        Assert.Contains(@"\Windows\System32\wpeinit.exe", ini);
+        // Must target the media-root launcher stub, NOT sources\setup.exe (the engine).
+        Assert.Contains("%SYSTEMDRIVE%\\setup.exe, /legacy", ini);
+        Assert.DoesNotContain(@"\sources\setup.exe", ini);
+        // wpeinit line must precede the setup line.
+        Assert.True(ini.IndexOf("wpeinit", StringComparison.Ordinal)
+                    < ini.IndexOf("setup.exe, /legacy", StringComparison.Ordinal));
+        Assert.EndsWith("\r\n", ini);
     }
 
     [Fact]

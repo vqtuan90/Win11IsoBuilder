@@ -13,9 +13,21 @@ namespace Win11IsoBuilder.Services;
 /// </summary>
 public static class LegacySetupPatcher
 {
-    /// <summary>winpeshl.ini payload. CRLF is mandatory for WinPE ini parsing.</summary>
+    /// <summary>
+    /// winpeshl.ini payload (CRLF mandatory for WinPE ini parsing). It must:
+    /// (1) run wpeinit — a custom winpeshl.ini replaces the default shell so the stock
+    ///     startnet.cmd (which is just "wpeinit") no longer runs; skipping it leaves the
+    ///     WinPE bootstrap uninitialized;
+    /// (2) launch the MEDIA-ROOT X:\setup.exe (the small "Windows Installer" launcher stub
+    ///     that understands /legacy), NOT X:\sources\setup.exe (the classic setup engine).
+    ///     /legacy makes the stub run the classic setup — which honors every unattend pass —
+    ///     instead of ConX. Launching the engine directly bypasses the stub's bootstrap and
+    ///     fails with "could not apply the Windows PE bootstrap setting".
+    /// </summary>
     public const string WinpeshlIni =
-        "[LaunchApps]\r\n%SYSTEMDRIVE%\\sources\\setup.exe, /legacy\r\n";
+        "[LaunchApps]\r\n" +
+        "%SYSTEMDRIVE%\\Windows\\System32\\wpeinit.exe\r\n" +
+        "%SYSTEMDRIVE%\\setup.exe, /legacy\r\n";
 
     /// <summary>Win11 24H2 (first ConX build). 25H2 = 26200.</summary>
     private const int FirstConXBuild = 26100;

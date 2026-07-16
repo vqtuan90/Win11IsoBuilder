@@ -1,37 +1,47 @@
 @echo off
 rem Zero-touch disk preparation, called from autounattend.xml inside WinPE before Setup
-rem consumes ImageInstall. It targets the first INTERNAL disk and NEVER the boot USB:
-rem this script runs from the USB itself (%~d0), so its physical disk is identified and
-rem excluded. WARNING: the chosen internal disk is erased completely.
-rem Firmware: PEFirmwareType 0x1 = legacy BIOS, 0x2 = UEFI. Unknown → leave disks alone.
+rem consumes ImageInstall. SAFETY FIRST: it classifies every disk as USB or internal
+rem (diskpart "detail disk" — a USB stick reports Type USB and a "USB Device" model) and
+rem only wipes when there is EXACTLY ONE internal, non-USB disk. Any ambiguity (no internal
+rem disk, or more than one) aborts WITHOUT touching any disk, so Setup shows its drive
+rem picker instead of ever erasing the wrong disk (e.g. the boot USB).
+rem Firmware: PEFirmwareType 0x1 = legacy BIOS, 0x2 = UEFI.
+setlocal enabledelayedexpansion
+set LOG=X:\auto-partition.log
+echo [auto-partition] start > %LOG%
 
-rem --- Identify the physical disk of the boot media (the volume this script runs from) ---
-set BOOTLETTER=%~d0
-set BOOTLETTER=%BOOTLETTER:~0,1%
-> X:\ap-detail.txt echo select volume %BOOTLETTER%
->> X:\ap-detail.txt echo detail volume
-set USBDISK=
-for /f "tokens=3" %%a in ('diskpart /s X:\ap-detail.txt ^| find "* Disk"') do set USBDISK=%%a
-
-rem --- Choose target = first disk that is NOT the boot USB ---
-> X:\ap-list.txt echo list disk
+rem --- Classify every disk; count internal (non-USB) disks and remember the first ---
 set TARGET=
-for /f "tokens=2" %%a in ('diskpart /s X:\ap-list.txt ^| findstr /r /c:"Disk [0-9]"') do (
-  if not defined TARGET if not "%%a"=="%USBDISK%" set TARGET=%%a
+set INTERNAL=0
+> X:\ap-list.txt echo list disk
+for /f "tokens=2" %%d in ('diskpart /s X:\ap-list.txt ^| findstr /r /c:"Disk [0-9]"') do (
+  > X:\ap-detail.txt echo select disk %%d
+  >> X:\ap-detail.txt echo detail disk
+  set ISUSB=0
+  diskpart /s X:\ap-detail.txt | find /i "USB" > nul && set ISUSB=1
+  echo Disk %%d USB=!ISUSB! >> %LOG%
+  if "!ISUSB!"=="0" (
+    set /a INTERNAL+=1
+    if not defined TARGET set TARGET=%%d
+  )
 )
+echo Internal disks=!INTERNAL!, target=!TARGET! >> %LOG%
 
-if not defined TARGET (
-  echo No internal target disk found ^(boot USB = disk %USBDISK%^) - disks left untouched.> X:\auto-partition.log
+rem --- Only proceed when exactly one internal disk is present ---
+if not "!INTERNAL!"=="1" (
+  echo Not exactly one internal disk - leaving all disks untouched, Setup will show the picker. >> %LOG%
+  copy /y %LOG% "%~dp0auto-partition.log" > nul 2>&1
   exit /b 1
 )
 
 set FW=
 for /f "tokens=3" %%a in ('reg query HKLM\System\CurrentControlSet\Control /v PEFirmwareType ^| find /i "PEFirmwareType"') do set FW=%%a
+echo Firmware=!FW! >> %LOG%
 
-if "%FW%"=="0x2" (
+if "!FW!"=="0x2" (
   rem GPT layout for UEFI: EFI 300MB + MSR 128MB + OS partition.
   (
-    echo select disk %TARGET%
+    echo select disk !TARGET!
     echo clean
     echo convert gpt
     echo create partition efi size=300
@@ -40,10 +50,10 @@ if "%FW%"=="0x2" (
     echo create partition primary
     echo format quick fs=ntfs label=Windows
   ) > X:\ap.txt
-) else if "%FW%"=="0x1" (
+) else if "!FW!"=="0x1" (
   rem MBR layout for legacy BIOS: active System Reserved 100MB + OS partition.
   (
-    echo select disk %TARGET%
+    echo select disk !TARGET!
     echo clean
     echo create partition primary size=100
     echo format quick fs=ntfs label=System
@@ -52,9 +62,11 @@ if "%FW%"=="0x2" (
     echo format quick fs=ntfs label=Windows
   ) > X:\ap.txt
 ) else (
-  echo Unknown firmware type "%FW%" - disk left untouched.> X:\auto-partition.log
+  echo Unknown firmware type "!FW!" - disk left untouched. >> %LOG%
+  copy /y %LOG% "%~dp0auto-partition.log" > nul 2>&1
   exit /b 1
 )
 
-diskpart /s X:\ap.txt > X:\auto-partition.log 2>&1
-echo Target disk %TARGET% (firmware %FW%, boot USB disk %USBDISK%).>> X:\auto-partition.log
+diskpart /s X:\ap.txt >> %LOG% 2>&1
+echo Partitioned internal disk !TARGET! (firmware !FW!). >> %LOG%
+copy /y %LOG% "%~dp0auto-partition.log" > nul 2>&1

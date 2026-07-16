@@ -66,9 +66,8 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
 5. **Debug from WinPE:** press **Shift+F10** during Setup → `type X:\auto-partition.log` shows the
    chosen target disk and the excluded boot-USB disk number.
 
-> **Validated on real hardware (2026-07-16):** Dell laptop, Win11 25H2 media — full zero-touch
-> install (VMD NVMe seen, internal disk partitioned, boot USB preserved, OOBE automated, offline
-> apps installed). Confirms AC-D3 + AC-Z1 end to end.
+> **Status (2026-07-16):** Real-hardware zero-touch NOT yet fully validated — auto-partition still
+> reported wiping an unintended disk on a real machine. Disk-selection under investigation.
 
 ## Post-install verification (AC-4, AC-5, AC-6)
 

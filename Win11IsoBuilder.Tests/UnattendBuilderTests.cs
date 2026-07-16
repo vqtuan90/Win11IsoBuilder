@@ -179,14 +179,17 @@ public class UnattendBuilderTests
         Assert.Contains("diskpart /s", script);
         Assert.Contains("\r\n", script);   // batch parsing is only reliable with CRLF
         // Unknown firmware must leave the disk untouched (no wrong-layout wipe).
-        Assert.Contains(@"else if ""%FW%""==""0x1""", script);
+        Assert.Contains(@"else if ""!FW!""==""0x1""", script);
         Assert.Contains("exit /b 1", script);
         // MUST NOT wipe a hardcoded disk 0 — the boot USB is often disk 0 and would be
-        // erased mid-setup. Target is resolved dynamically, excluding the boot USB's disk.
+        // erased mid-setup. Target is resolved dynamically and only when unambiguous.
         Assert.DoesNotContain("select disk 0", script);
-        Assert.Contains("select disk %TARGET%", script);
-        Assert.Contains("USBDISK", script);      // boot-media disk is identified
-        Assert.Contains("list disk", script);    // and excluded from target selection
+        Assert.Contains("select disk !TARGET!", script);
+        Assert.Contains("detail disk", script);  // classify each disk as USB / internal
+        Assert.Contains("find /i \"USB\"", script);
+        // Safety gate: only wipe when exactly one internal (non-USB) disk exists.
+        Assert.Contains("INTERNAL", script);
+        Assert.Contains(@"if not ""!INTERNAL!""==""1""", script);
     }
 
     private static string NewTempDir()

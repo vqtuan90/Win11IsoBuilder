@@ -9,6 +9,7 @@ namespace Win11IsoBuilder.Services;
 ///   --build --iso "x.iso" --out "C:\out" [--name file.iso] [--edition N]
 ///           [--debloat "Microsoft.BingNews,Microsoft.BingWeather"] [--office]
 ///           [--drivers "C:\drv1;C:\drv2"] [--no-vmd] [--no-auto-partition]
+///           [--user Admin] [--password "secret"]
 /// Office and apps are OFF unless requested, keeping a smoke test fast. The pinned Intel
 /// VMD storage driver and MDT-style zero-touch install (wipes Disk 0!) are ON by default
 /// (disable with --no-vmd / --no-auto-partition).
@@ -81,6 +82,12 @@ public static class HeadlessBuildRunner
             cfg.Drivers.DriverFolders = drv.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         if (o.ContainsKey("no-vmd")) cfg.Drivers.IncludeIntelVmd = false;
         if (o.ContainsKey("no-auto-partition")) cfg.Windows.AutoPartition = false;
+
+        // Local administrator created at OOBE (defaults: Admin / blank password).
+        if (o.TryGetValue("user", out var user) && !string.IsNullOrWhiteSpace(user))
+            cfg.Windows.LocalUsername = user;
+        if (o.TryGetValue("password", out var password) && password != "true")
+            cfg.Windows.LocalPassword = password;
 
         return cfg;
     }

@@ -20,7 +20,9 @@ Output: a single bootable `.iso` (UEFI + legacy BIOS).
   `setup.exe /legacy`, restoring fully unattended installs.
 - **Unattended setup** via generated `autounattend.xml`:
   - Bypass **TPM 2.0 / Secure Boot / RAM / Storage / CPU** checks (LabConfig keys).
-  - Skip Microsoft account → create a **local administrator**.
+  - Skip Microsoft account → create a **local administrator** (default `Admin`, blank password;
+    override in the wizard or via `--user` / `--password`). First boot auto-logs into the desktop
+    (one time only).
   - Region / time zone / keyboard; computer name placeholder.
   - **MDT-style zero-touch by default** — ⚠️ **ERASES DISK 0**: a WinPE script wipes and partitions
     Disk 0 (GPT on UEFI, MBR on legacy BIOS), the edition is applied and the EULA accepted with no

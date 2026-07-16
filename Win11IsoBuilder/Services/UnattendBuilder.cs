@@ -109,7 +109,8 @@ public sealed class UnattendBuilder
                 new XElement(U + "HideWirelessSetupInOOBE", "true"),
                 new XElement(U + "ProtectYourPC", "3")),
             new XElement(U + "TimeZone", o.TimeZone),
-            LocalAccount(o));
+            LocalAccount(o),
+            AutoLogon(o));
 
         return Pass("oobeSystem", intl, shell);
     }
@@ -125,6 +126,20 @@ public sealed class UnattendBuilder
                     new XElement(U + "Password",
                         new XElement(U + "Value", o.LocalPassword),
                         new XElement(U + "PlainText", "true")))));
+
+    /// <summary>
+    /// First boot lands straight on the desktop (MDT-style) instead of the login screen.
+    /// One logon only — later boots ask for credentials as usual. App install is NOT tied
+    /// to this: SetupComplete.cmd runs as SYSTEM before any logon (PRD decision #6 stands).
+    /// </summary>
+    private XElement AutoLogon(WinCustomizationOptions o) =>
+        new(U + "AutoLogon",
+            new XElement(U + "Enabled", "true"),
+            new XElement(U + "Username", o.LocalUsername),
+            new XElement(U + "Password",
+                new XElement(U + "Value", o.LocalPassword),
+                new XElement(U + "PlainText", "true")),
+            new XElement(U + "LogonCount", 1));
 
     private IEnumerable<XElement> RunSyncCommands(WinCustomizationOptions o)
     {

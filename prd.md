@@ -123,7 +123,9 @@ thư mục media → Repack ISO (oscdimg UEFI+BIOS) → Xuất `.iso`.
    **SUPERSEDED 2026-07-14 (Validation Session 2):** user chốt zero-touch kiểu MDT là **mặc định**
    (tự wipe + phân vùng Disk 0); drive picker trở thành opt-out (UI + `--no-auto-partition`).
    Rủi ro wipe nhầm ổ được chấp nhận như MDT; cảnh báo đỏ 2 lớp trong UI.
-6. ✅ **First-boot** → SetupComplete.cmd (quyền SYSTEM), không dùng AutoLogon.
+6. ✅ **First-boot** → SetupComplete.cmd (quyền SYSTEM), không dùng AutoLogon làm cơ chế cài app.
+   *Bổ sung 2026-07-16 (user chốt):* thêm **AutoLogon LogonCount=1** thuần UX — boot đầu vào thẳng
+   desktop như MDT; cơ chế cài app vẫn là SetupComplete, không đổi.
 7. ✅ **Driver Intel VMD (2026-07-14)** → cả 2 nguồn: catalog pinned (Intel RST 19.5.8, SetupRST.exe
    `-extractdrivers`, SHA-256 verify — Intel đã ngừng phát hành F6 zip) + thư mục driver user.
    Gen 11–14 cover bởi catalog; Core Ultra → user tự cấp driver RST 20.x (URL Intel 20.x không ổn định).

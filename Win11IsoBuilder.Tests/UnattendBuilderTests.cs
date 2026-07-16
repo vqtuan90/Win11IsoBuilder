@@ -87,6 +87,20 @@ public class UnattendBuilderTests
     }
 
     [Fact]
+    public void Build_FirstBootAutoLogonForLocalAdmin()
+    {
+        var opts = new WinCustomizationOptions { LocalUsername = "Tester", LocalPassword = "pw1" };
+        var doc = new UnattendBuilder().Build(opts);
+        var oobe = doc.Descendants(U + "settings").First(s => s.Attribute("pass")?.Value == "oobeSystem");
+
+        var logon = oobe.Descendants(U + "AutoLogon").Single();
+        Assert.Equal("true", logon.Element(U + "Enabled")?.Value);
+        Assert.Equal("Tester", logon.Element(U + "Username")?.Value);
+        Assert.Equal("pw1", logon.Element(U + "Password")?.Element(U + "Value")?.Value);
+        Assert.Equal("1", logon.Element(U + "LogonCount")?.Value); // first boot only
+    }
+
+    [Fact]
     public void Build_ZeroTouchDefault_HasImageInstallEulaAndPartitionCommand()
     {
         var doc = new UnattendBuilder().Build(new WinCustomizationOptions(), imageIndex: 3);

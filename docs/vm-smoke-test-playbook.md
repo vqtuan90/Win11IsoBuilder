@@ -59,12 +59,16 @@ Unit tests cover the builders/parsers; this validates a real install end-to-end.
    external/extra disks and double-check nothing valuable is on the machine's internal drive.
 3. BIOS: keep **VMD/RST enabled** (that is what the driver injection is for); Secure Boot can stay
    ON (media uses signed Microsoft boot files; the LabConfig keys only bypass the requirement check).
-4. Expected: Setup lists the NVMe drive (VMD driver loaded), wipes/partitions Disk 0, installs and
-   reaches the desktop with zero interaction; computer name = BIOS serial (sanitized); apps + Office
-   install offline at first boot (`%WINDIR%\Setup\Scripts\win11builder-firstboot.log`).
-5. **If partitioning fails immediately:** some firmware enumerates the USB stick itself as Disk 0 —
-   the wipe then hits the USB and Setup stops with an error (no data loss on internal disks).
-   Retry with the stick in another port, or rebuild with `--no-auto-partition` for that machine.
+4. Expected: Setup lists the NVMe drive (VMD driver loaded), wipes/partitions the internal disk
+   (never the boot USB), installs and reaches the desktop with zero interaction; computer name =
+   BIOS serial (sanitized); apps + Office install offline at first boot
+   (`%WINDIR%\Setup\Scripts\win11builder-firstboot.log`).
+5. **Debug from WinPE:** press **Shift+F10** during Setup → `type X:\auto-partition.log` shows the
+   chosen target disk and the excluded boot-USB disk number.
+
+> **Validated on real hardware (2026-07-16):** Dell laptop, Win11 25H2 media — full zero-touch
+> install (VMD NVMe seen, internal disk partitioned, boot USB preserved, OOBE automated, offline
+> apps installed). Confirms AC-D3 + AC-Z1 end to end.
 
 ## Post-install verification (AC-4, AC-5, AC-6)
 
